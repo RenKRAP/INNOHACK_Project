@@ -27,6 +27,21 @@ npm.cmd run dev
 
 이미 저장소를 내려받았다면 저장소 루트에서 `npm.cmd ci`부터 실행합니다. 브라우저에서 <http://127.0.0.1:4173>을 열고, 종료할 때는 터미널에서 `Ctrl+C`를 누릅니다.
 
+## 해무각 디자인 시안
+
+위 서버를 실행한 뒤 <http://127.0.0.1:4173/haemugak/index.html>에서 홈, 해무 예보, 전망 지도와 3D 해무 단면을 볼 수 있습니다. [미리보기 HTML](public/haemugak/index.html)은 압축을 풀거나 저장소를 복제한 뒤 브라우저에서 직접 열 수도 있습니다. 시안의 해무 수치는 예시 데이터입니다.
+
+React 소스를 수정하려면 저장소 루트에서 아래 명령을 실행하세요. 사진과 지형 자료 출처는 [해무각 자료 출처](design/haemugak/ATTRIBUTIONS.md)에 있습니다.
+
+```powershell
+npm.cmd --prefix design/haemugak ci
+npm.cmd --prefix design/haemugak run dev -- --port 4178
+```
+
+수정 중인 시안은 <http://127.0.0.1:4178>에서 볼 수 있습니다.
+
+## OnSeafog 서버 설정
+
 `dev`는 사이트를 빌드한 뒤 서버를 실행합니다. 파일을 수정했다면 종료 후 다시 실행해 빌드 결과를 갱신합니다. 포트를 바꾸려면 실행 전에 다음과 같이 설정합니다.
 
 ```powershell

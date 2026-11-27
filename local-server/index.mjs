@@ -7,7 +7,11 @@ import { WeatherError } from './kim-weather.mjs';
 import { loadLocalEnv } from './env.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json; charset=utf-8' };
+const types = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp',
+  '.woff2': 'font/woff2', '.json': 'application/json; charset=utf-8',
+};
 export function createApp({ staticRoot = resolve(root, 'dist'), weatherLoader = fetchWeather, reportError = event => console.error(JSON.stringify(event)) } = {}) {
   staticRoot = resolve(staticRoot);
   const cache = new Map(), pending = new Map();

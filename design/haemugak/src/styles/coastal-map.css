@@ -1,0 +1,50 @@
+.coastal-leaflet.leaflet-container {
+  background: #c6dce5;
+  cursor: crosshair;
+  font-family: inherit;
+  touch-action: pan-y;
+}
+
+.coastal-leaflet .coastal-pin {
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #536a79;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 1px 5px #14253d66;
+  cursor: pointer;
+}
+
+.coastal-leaflet .coastal-pin--above { background: #23675d; }
+.coastal-leaflet .coastal-pin--edge { background: #315c82; }
+.coastal-leaflet .coastal-pin--inside { background: #89591f; }
+
+.coastal-leaflet .coastal-pin--selected,
+.coastal-leaflet .coastal-pin:focus-visible {
+  outline: 3px solid #14253d;
+  outline-offset: 2px;
+}
+
+.coastal-leaflet .coastal-target {
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #14253db3;
+  box-shadow: 0 0 0 6px #14253d42;
+}
+
+.coastal-leaflet .coastal-target::after {
+  position: absolute;
+  inset: 8px;
+  border: 2px solid white;
+  border-radius: 50%;
+  content: '';
+}
+
+.coastal-leaflet .leaflet-control-attribution {
+  background: #fffcf4e8;
+  color: #344e60;
+  font-size: 10px;
+}
