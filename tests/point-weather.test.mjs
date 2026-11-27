@@ -9,7 +9,7 @@ const data = value => ({ hours: [{ time: '2026-07-01T01:00', temperature: value,
 
 test('point datasets stay isolated by coordinate and mode; cache expires and refresh bypasses cache', async () => {
   let time = 0; const calls = [];
-  const cache = createPointWeather(async (mode, point) => { calls.push([mode, point]); return data(point.lat === a.lat ? 26 : 21); }, () => time);
+  const cache = createPointWeather(async (mode, point, force) => { calls.push([mode, point, force]); return data(point.lat === a.lat ? 26 : 21); }, () => time);
   const first = await cache.get('forecast', a);
   assert.equal(await cache.get('forecast', a), first);
   const second = await cache.get('forecast', b);
@@ -19,7 +19,7 @@ test('point datasets stay isolated by coordinate and mode; cache expires and ref
   await cache.get('archive', a); assert.equal(calls.length, 3);
   time = 300001; await cache.get('forecast', a); assert.equal(calls.length, 4);
   await cache.get('archive', a); assert.equal(calls.length, 4);
-  await cache.get('archive', a, true); assert.equal(calls.length, 5);
+  await cache.get('archive', a, true); assert.equal(calls.length, 5); assert.equal(calls[4][2], true);
   time = 86700002; await cache.get('archive', a); assert.equal(calls.length, 6);
 });
 

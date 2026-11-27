@@ -11,7 +11,7 @@ export function createPointWeather(fetcher, now = Date.now) {
       if (!force && stored && now() - stored.at < ttl) return stored.data;
       if (pending.has(key)) return pending.get(key);
       const work = (async () => {
-        const data = await fetcher(mode, point);
+        const data = await fetcher(mode, point, force);
         if (!data.hours?.length) throw new Error('시간별 자료가 없습니다.');
         cache.set(key, { data, at: now() });
         if (cache.size > 32) cache.delete(cache.keys().next().value);

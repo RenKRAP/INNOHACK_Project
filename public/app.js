@@ -2,10 +2,11 @@ import { predictFog, classifyViewpoint, VIEWPOINTS, DEFAULT_THRESHOLD } from '/m
 import { bindMapInteractions, FIXED_MAP_OPTIONS } from './map-interactions.js';
 import { altitudeKey, parseAltitude, withSavedAltitude } from './altitude-store.js';
 import { createPointWeather, pointPrediction } from './point-weather.js';
+import { selectAnalysisTime } from './analysis-time.js';
 
 const $ = id => document.getElementById(id);
 const DEFAULT_POINT = { id: 'region', lat: 35.1595, lon: 129.1604, name: '해운대 대표 지점', altitude: null, type: '기본 분석 위치', description: '지도에서 원하는 위치를 클릭하면 그 좌표의 해무 조건 점수를 계산합니다.', note: '고도 미확인 · 점수는 기상자료로 계산합니다.' };
-const state = { dataset: null, date: '', index: 3, viewpoint: DEFAULT_POINT, requestedPoint: DEFAULT_POINT, threshold: DEFAULT_THRESHOLD, mode: 'archive', requestedMode: 'archive', timer: null, request: 0 };
+const state = { dataset: null, date: '', index: 3, viewpoint: DEFAULT_POINT, requestedPoint: DEFAULT_POINT, threshold: DEFAULT_THRESHOLD, mode: 'forecast', requestedMode: 'forecast', timer: null, request: 0 };
 const fmt = (n, digits = 1) => typeof n === 'number' && Number.isFinite(n) ? n.toFixed(digits) : '—';
 const hours = () => state.dataset?.hours.filter(h => h.time.startsWith(state.date)) ?? [];
 const current = () => hours()[state.index];
@@ -13,7 +14,7 @@ const prediction = () => current() ? predictFog(current(), state.threshold) : nu
 const compass = degree => degree == null ? '—' : ['북', '북동', '동', '남동', '남', '남서', '서', '북서'][Math.round(degree / 45) % 8];
 const koreaNow = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 16);
 let map, selectedHalo, selectedMarker, tiles, markers = [];
-let pointMode = null, pointGeneration = 0;
+let pointMode = null, pointGeneration = 0, pointUpdatedAt = 0;
 const pointData = new Map();
 const memoryAltitudes = new Map();
 const savedPoint = point => {
@@ -21,17 +22,18 @@ const savedPoint = point => {
   if (memory) return { ...point, ...memory };
   try { return withSavedAltitude(point, localStorage); } catch { return { ...point }; }
 };
-const pointWeather = createPointWeather(async (mode, point) => {
+const pointWeather = createPointWeather(async (mode, point, force) => {
   const query = new URLSearchParams({ mode });
+  if (force) query.set('refresh', '1');
   if (point.id !== 'region') { query.set('lat', point.lat); query.set('lon', point.lon); }
-  const response = await fetch(`/api/weather?${query}`, { signal: AbortSignal.timeout(45000) });
+  const response = await fetch(`/api/weather?${query}`, { signal: AbortSignal.timeout(180000) });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || '자료를 가져오지 못했습니다.');
   return data;
 });
 async function loadMapPoints(mode, force = false) {
-  if (!force && pointMode === mode) return;
-  pointMode = mode;
+  if (!force && pointMode === mode && Date.now() - pointUpdatedAt < (mode === 'forecast' ? 300000 : 86400000)) return;
+  pointMode = mode; pointUpdatedAt = Date.now();
   const generation = ++pointGeneration;
   pointData.clear();
   VIEWPOINTS.forEach(point => pointData.set(point.id, { loading: true }));
@@ -87,34 +89,40 @@ async function load(mode, point = state.viewpoint, force = false) {
   stopPlay();
   state.requestedMode = mode; state.requestedPoint = point;
   const request = ++state.request;
-  const previousTime = mode === state.mode ? current()?.time : null;
   for (const id of ['refresh-button', 'export-button', 'play-button']) $(id).disabled = true;
   $('error').hidden = true;
-  $('notice').textContent = `${point.name} (${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}) · ${mode === 'archive' ? '2026년 7월' : '최신 예보'} 기상·해양 자료를 조회하고 있습니다…`;
+  $('notice').textContent = `${point.name} (${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}) · ${mode === 'archive' ? '2026년 7월 GFS' : 'JMA MSM 5km 예보'} 기상·해양 자료를 조회하고 있습니다…`;
   try {
     const data = await pointWeather.get(mode, point, force);
     if (request !== state.request) return;
+    // Read the latest selection after the request: the user may change days while loading.
+    const selection = selectAnalysisTime(data.hours,
+      mode === state.mode ? $('date-select').value : null,
+      mode === state.mode ? current()?.time : null,
+      mode === 'archive' ? data.recommendedTime || data.hours[0].time : koreaNow());
     state.dataset = data; state.mode = mode; state.viewpoint = savedPoint(point);
     $('altitude-input').value = state.viewpoint.altitude ?? '';
     $('altitude-form').querySelector('fieldset').disabled = false;
     $('altitude-feedback').textContent = '';
     const dates = [...new Set(data.hours.map(h => h.time.slice(0, 10)))];
-    const target = previousTime || (mode === 'archive' ? data.recommendedTime || data.hours[0].time : koreaNow());
-    state.date = dates.includes(target.slice(0, 10)) ? target.slice(0, 10) : dates[0];
-    const index = hours().findIndex(h => h.time.slice(11, 13) === target.slice(11, 13)); state.index = Math.max(0, index);
+    Object.assign(state, selection);
     $('date-select').replaceChildren(...dates.map(date => { const o = document.createElement('option'); o.value = date; o.textContent = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'short', timeZone: 'Asia/Seoul' }).format(new Date(date + 'T12:00:00+09:00')); return o; }));
     $('date-select').value = state.date; $('date-select').disabled = false;
     $('archive-button').classList.toggle('selected', mode === 'archive'); $('forecast-button').classList.toggle('selected', mode === 'forecast');
     $('archive-button').setAttribute('aria-pressed', String(mode === 'archive')); $('forecast-button').setAttribute('aria-pressed', String(mode === 'forecast'));
-    $('map-mode').textContent = mode === 'archive' ? '과거 자료' : '최신 모델 예보';
-    $('notice').textContent = `${mode === 'archive' ? 'ARCHIVE · 2026년 7월의 모델 기상자료를 활용한 과거 조건 분석입니다. 실측 해무 기록이 아닙니다.' : 'FORECAST · 최신 모델 예보입니다. 5분 동안 조회 결과를 재사용하며, 실시간 관측은 아닙니다.'}${data.warnings?.length ? ' ' + data.warnings.join(' ') : ''}`;
-    $('fetched-note').textContent = `자료 수집: ${new Date(data.fetchedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} KST · 대기 격자 ${data.grids?.atmosphere?.latitude ?? '—'}, ${data.grids?.atmosphere?.longitude ?? '—'} · 해양 격자 ${data.grids?.marine?.latitude ?? '—'}, ${data.grids?.marine?.longitude ?? '—'} · 인접 좌표는 같은 기상 격자를 사용할 수 있습니다.`;
+    $('map-mode').textContent = mode === 'archive' ? 'GFS 과거 자료' : 'JMA MSM · 5km 예보';
+    $('notice').textContent = `${mode === 'archive' ? 'ARCHIVE · 2026년 7월 GFS 과거 조건 분석 · 지상 약 13km / 연직 약 25km 자료입니다. 1km 자료나 실측 해무 기록이 아닙니다.' : 'FORECAST · JMA MSM 5km · 현재 시각부터 48시간 예보 · 5분마다 자동 갱신합니다. 격자 간격은 예측 정확도를 뜻하지 않습니다.'}${data.warnings?.length ? ' ' + data.warnings.join(' ') : ''}`;
+    $('source-note').textContent = mode === 'forecast' ? 'Open-Meteo · JMA MSM 5km 기상 · 기본 모델 가시거리·연직 자료 · Marine SST' : 'Open-Meteo · NOAA GFS · Marine SST · 과거 자료';
+    const collected = `자료 수집: ${new Date(data.fetchedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} KST`;
+    $('fetched-note').textContent = mode === 'forecast'
+      ? `${collected} · 예보 범위: ${data.hours[0].time} ~ ${data.hours.at(-1).time} KST · 대기 격자 ${data.grids?.atmosphere?.latitude ?? '—'}, ${data.grids?.atmosphere?.longitude ?? '—'} · 해양 격자 ${data.grids?.marine?.latitude ?? '—'}, ${data.grids?.marine?.longitude ?? '—'} · 5분 캐시 · 수집 시각은 모델 발행 시각과 다릅니다. 인접 좌표는 같은 격자를 사용할 수 있으며 지형·건물 차폐는 반영하지 않습니다.`
+      : `${collected} · 대기 격자 ${data.grids?.atmosphere?.latitude ?? '—'}, ${data.grids?.atmosphere?.longitude ?? '—'} · 해양 격자 ${data.grids?.marine?.latitude ?? '—'}, ${data.grids?.marine?.longitude ?? '—'} · 인접 좌표는 같은 기상 격자를 사용할 수 있습니다.`;
     render();
     loadMapPoints(mode, force);
   } catch (error) {
     if (request !== state.request) return;
     $('error').hidden = false; $('error').querySelector('span').textContent = error.name === 'TimeoutError' ? '조회 시간이 초과되었습니다. 다시 시도해 주세요.' : error.message;
-    $('notice').textContent = state.dataset ? '조회 실패 · 아래 화면은 마지막으로 정상 조회한 자료를 유지합니다. 자료 종류와 시간을 확인하세요.' : '자료를 불러오지 못했습니다. 로컬 서버 실행 상태를 확인해 주세요.';
+    $('notice').textContent = state.dataset ? '조회 실패 · 아래 화면은 마지막으로 정상 조회한 자료를 유지합니다. 자료 종류와 시간을 확인하세요.' : '자료를 불러오지 못했습니다. 아래 오류 안내를 확인하고 다시 조회해 주세요.';
   } finally {
     if (request === state.request) { $('refresh-button').disabled = false; $('export-button').disabled = !state.dataset; $('play-button').disabled = !state.dataset; }
   }
@@ -154,6 +162,7 @@ function render() {
   $('metric-temperatures').textContent = `기온 ${fmt(hour.temperature)}° · 해수면 ${fmt(hour.seaTemperature)}°`;
   $('metric-humidity').innerHTML = `${fmt(hour.humidity, 0)}<small> %</small>`;
   $('metric-wind').textContent = `${compass(hour.windDirection)}풍 ${fmt(hour.windDirection, 0)}° · ${fmt(hour.windSpeed)}m/s`;
+  $('metric-visibility').textContent = `가시거리 ${fmt(hour.visibility == null ? null : hour.visibility / 1000)}km · 기본 모델`;
   $('metric-top').innerHTML = pred.top.height != null ? `${pred.top.height}<small> m</small>` : '<span style="font-size:23px">미확정</span>';
   $('metric-top-range').textContent = pred.top.range ? `추정 범위 ${pred.top.range[0]}–${pred.top.range[1]}m` : pred.top.status === 'open' ? `${pred.top.lowerBound}m까지 습윤층 지속` : pred.top.status === 'not-saturated' ? '지상 습도 90% 미만' : '유효한 연직 자료 부족';
   $('conditions-time').textContent = `${point.name} · ${state.date.replaceAll('-', '.')} ${hour.time.slice(11)} KST`;
@@ -218,15 +227,15 @@ function renderTimeline() {
   day.forEach((hour, index) => { const button = document.createElement('button'); button.textContent = hour.time.slice(11, 13); button.className = predictions[index].active ? 'high' : ''; button.setAttribute('aria-pressed', String(index === state.index)); button.setAttribute('aria-label', `${hour.time.slice(11)}, 조건 점수 ${predictions[index].score ?? '자료 부족'}`); button.addEventListener('click', () => { stopPlay(); state.index = index; render(); $('hour-buttons').children[index].focus({ preventScroll: true }); }); fragment.append(button); });
   $('hour-buttons').replaceChildren(fragment);
   const activeHours = predictions.filter(p => p.active).length, missing = predictions.filter(p => p.score == null).length;
-  $('day-summary').textContent = `기준 충족 ${activeHours}시간${missing ? ` · 결측 ${missing}시간` : ' / 24시간'}`;
+  $('day-summary').textContent = `${state.date.replaceAll('-', '.')} · 기준 충족 ${activeHours}시간 / ${day.length}시간${missing ? ` · 결측 ${missing}시간` : ''}`;
 }
 function renderFactors(pred) {
   $('factor-list').replaceChildren(...pred.factors.map(f => { const div = document.createElement('div'); div.className = 'factor'; div.innerHTML = `<span>${f.label}</span><span class="factor-track"><i style="width:${f.points / f.weight * 100}%"></i></span><strong>${fmt(f.points)} / ${f.weight}</strong>`; return div; }));
 }
 function exportCSV() {
   const point = state.viewpoint;
-  const rows = [['time_kst','latitude','longitude','point_name','point_altitude_m','air_temperature_c','sea_temperature_c','humidity_percent','dew_point_c','wind_speed_ms','wind_direction_deg','condition_score','threshold','fog_conditions_met','top_height_m','top_range_low_m','top_range_high_m','top_status','viewpoint_state']];
-  for (const h of hours()) { const p = predictFog(h, state.threshold); rows.push([h.time,point.lat,point.lon,point.name,point.altitude,h.temperature,h.seaTemperature,h.humidity,h.dewPoint,h.windSpeed,h.windDirection,p.score,state.threshold,p.active,p.top.height,p.top.range?.[0],p.top.range?.[1],p.top.status,classifyViewpoint(p, point.altitude).key]); }
+  const rows = [['time_kst','latitude','longitude','point_name','point_altitude_m','air_temperature_c','sea_temperature_c','humidity_percent','dew_point_c','wind_speed_ms','wind_direction_deg','visibility_m','condition_score','threshold','fog_conditions_met','top_height_m','top_range_low_m','top_range_high_m','top_status','viewpoint_state']];
+  for (const h of hours()) { const p = predictFog(h, state.threshold); rows.push([h.time,point.lat,point.lon,point.name,point.altitude,h.temperature,h.seaTemperature,h.humidity,h.dewPoint,h.windSpeed,h.windDirection,h.visibility,p.score,state.threshold,p.active,p.top.height,p.top.range?.[0],p.top.range?.[1],p.top.status,classifyViewpoint(p, point.altitude).key]); }
   const blob = new Blob(['\uFEFF' + rows.map(row => row.map(v => v ?? '').join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }); const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = `onseafog-${state.mode}-${state.date}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 $('archive-button').addEventListener('click', () => load('archive'));
@@ -261,12 +270,23 @@ $('clear-altitude').addEventListener('click', () => {
 });
 $('retry-button').addEventListener('click', () => load(state.requestedMode, state.requestedPoint));
 $('default-point').addEventListener('click', () => load(state.requestedMode, DEFAULT_POINT));
-$('date-select').addEventListener('change', e => { stopPlay(); state.date = e.target.value; state.index = Math.min(state.index, hours().length - 1); render(); });
+$('date-select').addEventListener('change', e => {
+  stopPlay();
+  if (!state.dataset) return;
+  Object.assign(state, selectAnalysisTime(state.dataset.hours, e.target.value, current()?.time));
+  $('date-select').value = state.date;
+  render();
+});
 $('threshold').addEventListener('input', e => { state.threshold = Number(e.target.value); render(); });
 $('play-button').addEventListener('click', () => { if (state.timer) { stopPlay(); return; } $('play-button').textContent = 'Ⅱ 재생 멈춤'; $('play-button').setAttribute('aria-pressed', 'true'); state.timer = setInterval(() => { state.index = (state.index + 1) % hours().length; render(); }, 1200); });
 $('export-button').addEventListener('click', exportCSV);
 for (const id of ['about-button', 'method-button', 'score-info']) $(id).addEventListener('click', () => $('model-dialog').showModal());
 $('close-dialog').addEventListener('click', () => $('model-dialog').close());
 $('model-dialog').addEventListener('click', e => { if (e.target === $('model-dialog') && (e.clientX < e.target.getBoundingClientRect().left || e.clientX > e.target.getBoundingClientRect().right || e.clientY < e.target.getBoundingClientRect().top || e.clientY > e.target.getBoundingClientRect().bottom)) e.target.close(); });
-document.addEventListener('visibilitychange', () => { if (document.hidden) stopPlay(); });
-initMap(); load('archive');
+function refreshIfStale() {
+  if (!document.hidden && state.requestedMode === 'forecast' && !$('refresh-button').disabled &&
+      (!state.dataset || Date.now() - Date.parse(state.dataset.fetchedAt) >= 300000)) load('forecast', state.requestedPoint);
+}
+setInterval(refreshIfStale, 300000);
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopPlay(); else refreshIfStale(); });
+initMap(); load('forecast');

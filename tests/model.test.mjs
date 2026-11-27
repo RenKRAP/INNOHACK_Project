@@ -46,11 +46,16 @@ test('unbounded, missing and widely spaced profiles never invent a fog top', () 
   assert.equal(p.top.status, 'open'); assert.equal(p.top.lowerBound, 300); assert.equal(p.top.height, null);
   assert.equal(classifyViewpoint(p, 427).key, 'unknown');
 });
-test('viewpoint classifications respect the uncertainty interval including endpoints', () => {
+test('viewpoint classifications merge lower and uncertain altitudes into inside, including endpoints', () => {
   const p = predictFog(humid());
   assert.equal(classifyViewpoint(p, 351).key, 'above');
-  assert.equal(classifyViewpoint(p, 49).key, 'inside');
-  for (const height of [50, 200, 350]) assert.equal(classifyViewpoint(p, height).key, 'boundary');
+  for (const height of [0, 49, 50, 200, 350]) {
+    const result = classifyViewpoint(p, height);
+    assert.equal(result.key, 'inside');
+    assert.equal(result.label, '해무 속');
+  }
+  assert.match(classifyViewpoint(p, 49).description, /상단 범위보다 낮습니다/);
+  assert.match(classifyViewpoint(p, 200).description, /추정 오차 범위/);
   assert.equal(classifyViewpoint(p, null).key, 'unknown');
   assert.equal(classifyViewpoint(predictFog({ ...humid(), humidity: 60 }), 427).key, 'clear');
 });

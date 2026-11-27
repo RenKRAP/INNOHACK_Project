@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { createApp } from '../local-server/index.mjs';
+import { WeatherError } from '../local-server/kim-weather.mjs';
 
 async function running(t, options) {
   const server = createApp(options); server.listen(0, '127.0.0.1'); await once(server, 'listening');
@@ -12,7 +13,7 @@ async function running(t, options) {
 test('local static page, archive, validation, HEAD and unknown routes', async t => {
   const base = await running(t, { staticRoot: fileURLToPath(new URL('../public/', import.meta.url)) });
   const health = await (await fetch(base + '/api/health')).json(); assert.equal(health.deployment, 'local-only');
-  const archive = await (await fetch(base + '/api/weather')).json(); assert.equal(archive.hours.length, 744);
+  const archive = await (await fetch(base + '/api/weather?mode=archive')).json(); assert.equal(archive.hours.length, 744);
   assert.equal((await fetch(base + '/api/weather?mode=invalid')).status, 400);
   assert.equal((await fetch(base + '/api/no')).status, 404); assert.equal((await fetch(base + '/missing')).status, 404);
   assert.equal((await fetch(base + '/api/health', { method: 'POST' })).status, 405);
@@ -22,7 +23,7 @@ test('local static page, archive, validation, HEAD and unknown routes', async t 
 test('concurrent latest requests share a fetch and subsequent requests reuse cache', async t => {
   let calls = 0;
   const base = await running(t, { weatherLoader: async (start, end, forecast) => { calls++; assert.equal(forecast, true); assert.ok(end > start); await new Promise(r => setTimeout(r, 30)); return { mode: 'forecast', hours: [{ time: start + 'T00:00' }] }; } });
-  const results = await Promise.all([fetch(base + '/api/weather?mode=forecast'), fetch(base + '/api/weather?mode=forecast')]);
+  const results = await Promise.all([fetch(base + '/api/weather'), fetch(base + '/api/weather?mode=forecast')]);
   for (const result of results) assert.equal(result.status, 200);
   assert.equal((await fetch(base + '/api/weather?mode=forecast')).status, 200); assert.equal(calls, 1);
 });
@@ -31,6 +32,14 @@ test('upstream failure returns 502 and next request can recover', async t => {
   const base = await running(t, { weatherLoader: async () => { if (++calls === 1) throw new Error('upstream failed'); return { hours: [] }; } });
   assert.equal((await fetch(base + '/api/weather?mode=forecast')).status, 502);
   assert.equal((await fetch(base + '/api/weather?mode=forecast')).status, 200);
+});
+
+test('missing KMA key is actionable and generic upstream errors do not disclose secrets', async t => {
+  const base = await running(t, { weatherLoader: async () => { throw new WeatherError('KMA_KEY_REQUIRED', 'Set KMA_API_KEY in .env.local', 503); } });
+  const response = await fetch(base + '/api/weather');
+  assert.equal(response.status, 503); assert.equal((await response.json()).code, 'KMA_KEY_REQUIRED');
+  const other = await running(t, { weatherLoader: async () => { throw new Error('https://example.com/?authKey=secret'); } });
+  assert.doesNotMatch(await (await fetch(other + '/api/weather')).text(), /secret|authKey/);
 });
 
 test('coordinates require a valid pair before calling upstream', async t => {

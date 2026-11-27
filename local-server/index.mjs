@@ -3,6 +3,8 @@ import { readFile, stat } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { fetchWeather } from './weather.mjs';
+import { WeatherError } from './kim-weather.mjs';
+import { loadLocalEnv } from './env.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json; charset=utf-8' };
@@ -16,7 +18,7 @@ export function createApp({ staticRoot = resolve(root, 'dist'), weatherLoader = 
       const url = new URL(req.url, 'http://localhost');
       if (url.pathname === '/api/health') return json(200, { status: 'ok', service: 'OnSeafog', deployment: 'local-only' });
       if (url.pathname === '/api/weather') {
-        const mode = url.searchParams.get('mode') || 'archive';
+        const mode = url.searchParams.get('mode') || 'forecast';
         if (!['archive', 'forecast'].includes(mode)) return json(400, { error: 'mode must be archive or forecast' });
         const latText = url.searchParams.get('lat'), lonText = url.searchParams.get('lon');
         let location;
@@ -31,7 +33,7 @@ export function createApp({ staticRoot = resolve(root, 'dist'), weatherLoader = 
         const end = mode === 'archive' ? '2026-07-31' : new Date(Date.parse(`${today}T00:00:00Z`) + 2 * 86400000).toISOString().slice(0, 10);
         const key = `${mode}:${start}:${location ? `${location.latitude},${location.longitude}` : 'default'}`;
         const cached = cache.get(key), ttl = mode === 'forecast' ? 300000 : 86400000;
-        if (cached && Date.now() - cached.cachedAt < ttl) return json(200, cached.data);
+        if (url.searchParams.get('refresh') !== '1' && cached && Date.now() - cached.cachedAt < ttl) return json(200, cached.data);
         if (!pending.has(key)) {
           const task = Promise.resolve().then(() => weatherLoader(start, end, mode === 'forecast', undefined, location)).then(data => {
             cache.delete(key);
@@ -42,7 +44,9 @@ export function createApp({ staticRoot = resolve(root, 'dist'), weatherLoader = 
           pending.set(key, task);
         }
         try { return json(200, await pending.get(key)); }
-        catch { return json(502, { error: '선택한 위치의 기상자료를 가져오지 못했습니다. 네트워크와 Open-Meteo 연결을 확인한 뒤 다시 시도해 주세요.' }); }
+        catch (error) { return error instanceof WeatherError
+          ? json(error.status, { error: error.message, code: error.code })
+          : json(502, { error: '선택한 위치의 기상자료를 가져오지 못했습니다. 네트워크와 자료 제공기관 연결을 확인한 뒤 다시 시도해 주세요.' }); }
       }
       if (url.pathname.startsWith('/api/')) return json(404, { error: 'API not found' });
       const decoded = decodeURIComponent(url.pathname);
@@ -60,6 +64,7 @@ export function createApp({ staticRoot = resolve(root, 'dist'), weatherLoader = 
   });
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  loadLocalEnv(root);
   const port = Number(process.env.PORT || 4173);
   const server = createApp();
   server.listen(port, '127.0.0.1', () => console.log(`OnSeafog local preview: http://127.0.0.1:${port} (not deployed)`));

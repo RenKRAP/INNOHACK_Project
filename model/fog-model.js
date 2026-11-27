@@ -54,6 +54,6 @@ export function classifyViewpoint(prediction, altitude) {
   const top = prediction.top;
   if (!top.range) return { key: 'unknown', label: '해무층 높이 미확정', description: top.reason };
   if (altitude > top.range[1]) return { key: 'above', label: '해무 위 가능', description: '지점 고도가 추정 해무층의 상단 범위보다 높습니다.' };
-  if (altitude < top.range[0]) return { key: 'inside', label: '해무 속 가능', description: '지점 고도가 추정 해무층의 상단 범위보다 낮습니다.' };
-  return { key: 'boundary', label: '해무 아래', description: '고도가 추정 오차 범위 안에 있어 시야가 달라질 수 있습니다.' };
+  if (altitude < top.range[0]) return { key: 'inside', label: '해무 속', description: '지점 고도가 추정 해무층의 상단 범위보다 낮습니다.' };
+  return { key: 'inside', label: '해무 속', description: '고도가 추정 오차 범위 안에 있어 시야가 달라질 수 있습니다.' };
 }
