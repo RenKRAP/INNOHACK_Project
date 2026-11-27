@@ -209,11 +209,22 @@ export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, o
               </button>
             </section>
             <div className="min-w-0 rounded-sm border border-border bg-card">
-              <div className="relative z-20 flex items-center justify-between gap-2.5 px-4 py-3 sm:px-5">
+              <div className="relative z-20 flex min-h-20 flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-4">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-accent"><MapPin aria-hidden="true" className="size-3.5" />해운대·수영 연안</span>
-                <ForecastCalendar date={selectedDate} onChange={setSelectedDate} />
+                <div className="ml-auto flex items-center gap-2">
+                  <label className="inline-flex items-center gap-1.5 text-xs font-medium">
+                    <span className="sr-only xl:not-sr-only">예보 시각</span>
+                    <select aria-label="지도 예보 시각" value={forecast.time} onChange={(event) => {
+                      const point = series.find(({ time }) => time === event.target.value);
+                      if (point) { setReferenceTime(undefined); onForecastSelect(point); }
+                    }} className="font-tabular min-h-10 rounded-sm border border-border bg-card px-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+                      {series.map(({ time }) => <option key={time} value={time}>{time}</option>)}
+                    </select>
+                  </label>
+                  <ForecastCalendar date={selectedDate} onChange={setSelectedDate} />
+                </div>
               </div>
-              <div className="relative isolate min-h-[370px] border-y border-border sm:min-h-[435px] lg:min-h-[485px]">
+              <div className="relative isolate h-[370px] border-y border-border sm:h-[435px] lg:h-[485px]">
                 <CoastalMap fogPolygon={fogVisible ? polygon : null} pins={allPins} selected={selected} onSelect={selectAtCurrentTime} onPick={(lat, lon) => selectAtCurrentTime({
                   id: "custom", name: "선택한 지도 위치", lat: Number(lat.toFixed(5)), lon: Number(lon.toFixed(5)), elevation: null, kind: "직접 선택한 좌표",
                 })} />
@@ -227,10 +238,10 @@ export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, o
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 text-xs text-muted-foreground sm:px-5">
-                <div className="flex flex-wrap gap-3.5">
-                  {([["above", "해무를 내려볼 수 있음"], ["edge", "해무가 눈높이에 있음"], ["inside", "해무 속"], ["outside", "해무 영역 밖"], ["unknown", "미확인"]] as const).map(([tone, label]) => (
-                    <span key={tone} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className={`size-2 rounded-full ${pinDots[tone]}`} />{label}</span>
+              <div className="flex min-h-16 flex-wrap items-center px-3 py-2.5 text-[11px] leading-4 text-muted-foreground sm:px-4">
+                <div className="flex flex-wrap gap-x-2.5 gap-y-1">
+                  {([["above", "해무 위"], ["edge", "눈높이"], ["inside", "해무 속"], ["outside", "영역 밖"], ["unknown", "미확인"]] as const).map(([tone, label]) => (
+                    <span key={tone} className="inline-flex items-center gap-1 whitespace-nowrap"><span aria-hidden="true" className={`size-1.5 rounded-full ${pinDots[tone]}`} />{label}</span>
                   ))}
                 </div>
               </div>
@@ -239,7 +250,7 @@ export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, o
 
           <ViewpointPhoto location={selected} />
 
-          <HourlyFogChart selected={forecast} onForecastSelect={(point) => { setReferenceTime(undefined); onForecastSelect(point); }} referenceTime={referenceTime} series={series} date={selectedDate} compact />
+          <HourlyFogChart selected={forecast} referenceTime={referenceTime} series={series} date={selectedDate} compact />
 
           <aside aria-labelledby="coastal-selected" className="min-w-0 rounded-sm border border-border bg-card p-4 sm:p-5">
             <div className="flex flex-wrap items-baseline justify-between gap-2">

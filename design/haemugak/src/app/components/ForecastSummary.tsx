@@ -72,8 +72,8 @@ export function ForecastSummary({ selected, onSelect }: ForecastSummaryProps) {
               </dl>
               <p className="mt-2.5 text-xs leading-relaxed break-keep text-muted-foreground">{selected.note}</p>
             </div>
-            <Link to="/map/terrain" className="mt-2 inline-flex min-h-9 items-center gap-1.5 text-xs font-medium text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-              이 높이로 3D 보기 <ArrowRight aria-hidden="true" className="size-3.5" />
+            <Link to="/map" className="mt-2 inline-flex min-h-9 items-center gap-1.5 text-xs font-medium text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+              전망 지도 보기 <ArrowRight aria-hidden="true" className="size-3.5" />
             </Link>
           </section>
 

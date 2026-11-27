@@ -38,12 +38,11 @@ interface HourlyFogChartProps {
   selected: HourlyForecastPoint;
   compact?: boolean;
   referenceTime?: string;
-  onForecastSelect?: (forecast: HourlyForecastPoint) => void;
   series?: HourlyForecastPoint[];
   date?: string;
 }
 
-export function HourlyFogChart({ selected, referenceTime, compact = false, onForecastSelect, series = HOURLY_FORECAST, date }: HourlyFogChartProps) {
+export function HourlyFogChart({ selected, referenceTime, compact = false, series = HOURLY_FORECAST, date }: HourlyFogChartProps) {
   const chartId = useId();
   const titleId = `${chartId}-title`;
   const fillId = `${chartId}-fill`;
@@ -66,17 +65,7 @@ export function HourlyFogChart({ selected, referenceTime, compact = false, onFor
           </Heading>
         </div>
         <div className="flex flex-wrap items-center gap-2.5 text-sm text-accent">
-          {onForecastSelect ? (
-            <label className="inline-flex items-center gap-2 font-medium">
-              예보 시각
-              <select aria-label="지도 예보 시각" value={selected.time} onChange={(event) => {
-                const match = series.find(({ time }) => time === event.target.value);
-                if (match) onForecastSelect(match);
-              }} className="font-tabular min-h-10 rounded-sm border border-border bg-card px-2.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring">
-                {series.map(({ time }) => <option key={time} value={time}>{time}</option>)}
-              </select>
-            </label>
-          ) : <span className="font-tabular"><time dateTime={selected.time}>{selected.time}</time> 선택</span>}
+          <span className="font-tabular"><time dateTime={selected.time}>{selected.time}</time> 기준</span>
         </div>
       </div>
       {date && <p aria-live="polite" className="mt-3 text-xs leading-relaxed text-muted-foreground">{date} · 가상 데이터 · {observable.length ? `해무 관측 가능 ${observable.length}시간 (확률 65% 이상)` : "해무 관측 가능 시간 없음"}</p>}

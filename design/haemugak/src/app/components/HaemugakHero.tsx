@@ -1,8 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
-import { HERO_IMAGE_URL, PEAK_HOURLY_FORECAST, VIEWPOINT_SPOTS } from "../data/haemugakData";
+import { HERO_IMAGE_URL } from "../data/haemugakData";
 
-const viewpoint = VIEWPOINT_SPOTS.find((spot) => spot.status === "해무 위");
 
 export function HaemugakHero() {
   return (
@@ -41,27 +40,6 @@ export function HaemugakHero() {
           <p className="mt-4 max-w-xs text-sm leading-relaxed break-keep text-white/90 sm:text-[15px]">
             바다 안개가 깔리는 시간과 그 위로 시야가 열리는 곳을 찾아보세요.
           </p>
-          <aside aria-labelledby="home-briefing" className="mt-6 rounded-sm border border-white/25 bg-[#0c2843]/75 px-4 py-3.5 sm:px-5">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <h2 id="home-briefing" className="text-xs font-medium">해무 예보 한눈에</h2>
-              <span className="text-[11px] text-white/80">예시 데이터</span>
-            </div>
-            <dl className="mt-3 grid grid-cols-2 divide-x divide-white/20 border-t border-white/20">
-              <div className="pt-2.5 pr-2.5">
-                <dt className="text-xs text-white/80">최고 확률 시각</dt>
-                <dd className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[#d6ebff]">
-                  <span className="font-tabular text-[17px] font-medium">{PEAK_HOURLY_FORECAST.time}</span>
-                  <strong className="font-tabular text-[17px] font-medium">{PEAK_HOURLY_FORECAST.probability}%</strong>
-                </dd>
-              </div>
-              {viewpoint && (
-                <div className="pt-2.5 pl-3 sm:pl-4">
-                  <dt className="text-xs text-white/80">해무 위 전망</dt>
-                  <dd className="mt-1 text-[17px] font-medium">{viewpoint.name}</dd>
-                </div>
-              )}
-            </dl>
-          </aside>
           <div className="mt-6 flex flex-wrap gap-2.5">
 
             <Link
