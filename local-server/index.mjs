@@ -2,13 +2,13 @@ import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { fetchWeather } from './weather.mjs';
+import { fetchWeather, OpenMeteoError } from './weather.mjs';
 import { WeatherError } from './kim-weather.mjs';
 import { loadLocalEnv } from './env.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json; charset=utf-8' };
-export function createApp({ staticRoot = resolve(root, 'dist'), weatherLoader = fetchWeather } = {}) {
+export function createApp({ staticRoot = resolve(root, 'dist'), weatherLoader = fetchWeather, reportError = event => console.error(JSON.stringify(event)) } = {}) {
   staticRoot = resolve(staticRoot);
   const cache = new Map(), pending = new Map();
   return http.createServer(async (req, res) => {
@@ -44,7 +44,11 @@ export function createApp({ staticRoot = resolve(root, 'dist'), weatherLoader = 
           pending.set(key, task);
         }
         try { return json(200, await pending.get(key)); }
-        catch (error) { return error instanceof WeatherError
+        catch (error) {
+          const known = error instanceof WeatherError || error instanceof OpenMeteoError;
+          reportError({ event: 'weather_api_failure', code: known ? error.code : 'WEATHER_INTERNAL',
+            ...(error instanceof OpenMeteoError ? { source: error.source, upstreamStatus: error.upstreamStatus, networkCode: error.networkCode } : {}) });
+          return known
           ? json(error.status, { error: error.message, code: error.code })
           : json(502, { error: '선택한 위치의 기상자료를 가져오지 못했습니다. 네트워크와 자료 제공기관 연결을 확인한 뒤 다시 시도해 주세요.' }); }
       }

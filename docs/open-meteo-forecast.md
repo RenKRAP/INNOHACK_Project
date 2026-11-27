@@ -19,3 +19,9 @@ JMA 조회가 실패하면 오류를 표시한다. Marine 조회 실패 시 지�
 5km는 JMA MSM 지상 모델의 격자 간격이다. 기본 예보의 가시거리·기압면 자료와 Marine SST는 다른 모델과 해상도이며, 전체 자료를 5km 또는 1km 예보로 해석하면 안 된다. 인접 위치가 같은 격자를 공유할 수 있고, 고층 건물의 실제 시야나 해무 예측 정확도는 관측 검증이 필요하다. 2026년 7월 저장 자료는 기존 GFS/Marine 자료를 유지한다.
 
 공식 문서: [JMA](https://open-meteo.com/en/docs/jma-api), [Forecast](https://open-meteo.com/en/docs), [Marine](https://open-meteo.com/en/docs/marine-weather-api).
+
+## 서버 API 오류 확인
+
+`/api/health`는 프로세스 응답만 확인하며 기상자료 연결 성공을 보장하지 않는다. 실제 연결은 `/api/weather?mode=forecast`로 확인한다. 연결 실패·HTTP 429/5xx는 최대 3회 시도하며 500/1000ms 간격을 둔다. 영구적인 HTTP 오류는 재시도하지 않는다.
+
+최신 코드에서 실패 응답의 `code`로 연결(`OPEN_METEO_CONNECTION`), 요청 제한(`OPEN_METEO_RATE_LIMIT`), HTTP 오류(`OPEN_METEO_HTTP`), 응답 형식(`OPEN_METEO_FORMAT`/`OPEN_METEO_DATA`)을 구분한다. Render Logs에서 `weather_api_failure`를 검색하면 출처(`source`), 제공자 HTTP 상태(`upstreamStatus`), 알려진 네트워크 코드(`networkCode`)를 확인할 수 있다. 원문 오류·URL·인증키는 로그에 기록하지 않는다. 이 로그는 수정 코드가 실행되는 환경에서만 생성된다.

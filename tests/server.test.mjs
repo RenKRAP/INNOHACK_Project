@@ -4,12 +4,36 @@ import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { createApp } from '../local-server/index.mjs';
 import { WeatherError } from '../local-server/kim-weather.mjs';
+import { OpenMeteoError } from '../local-server/weather.mjs';
+
+test('Open-Meteo rate limits expose an actionable error instead of a generic network message', async t => {
+  const base = await running(t, { weatherLoader: async () => {
+    throw new OpenMeteoError('OPEN_METEO_RATE_LIMIT', 'Open-Meteo 요청 한도에 도달했습니다.', 503);
+  } });
+  const response = await fetch(base + '/api/weather?mode=forecast');
+  assert.equal(response.status, 503);
+  const body = await response.json();
+  assert.equal(body.code, 'OPEN_METEO_RATE_LIMIT'); assert.match(body.error, /Open-Meteo/);
+});
 
 async function running(t, options) {
   const server = createApp(options); server.listen(0, '127.0.0.1'); await once(server, 'listening');
   t.after(() => new Promise(resolve => server.close(resolve)));
   return `http://127.0.0.1:${server.address().port}`;
 }
+
+test('weather failure logs contain safe provider diagnostics, never raw upstream errors', async t => {
+  const events = [];
+  const error = new OpenMeteoError('OPEN_METEO_HTTP', 'Provider unavailable');
+  Object.assign(error, { source: 'jma_msm', upstreamStatus: 403 });
+  const base = await running(t, { reportError: event => events.push(event), weatherLoader: async () => { throw error; } });
+  assert.equal((await fetch(base + '/api/weather')).status, 502);
+  assert.deepEqual(events[0], { event: 'weather_api_failure', code: 'OPEN_METEO_HTTP', source: 'jma_msm', upstreamStatus: 403, networkCode: undefined });
+  const other = await running(t, { reportError: event => events.push(event), weatherLoader: async () => { throw new Error('https://example.test?authKey=secret'); } });
+  assert.equal((await fetch(other + '/api/weather')).status, 502);
+  assert.deepEqual(events[1], { event: 'weather_api_failure', code: 'WEATHER_INTERNAL' });
+  assert.doesNotMatch(JSON.stringify(events), /secret|authKey/);
+});
 test('local static page, archive, validation, HEAD and unknown routes', async t => {
   const base = await running(t, { staticRoot: fileURLToPath(new URL('../public/', import.meta.url)) });
   const health = await (await fetch(base + '/api/health')).json(); assert.equal(health.deployment, 'local-only');

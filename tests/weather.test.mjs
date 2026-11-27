@@ -1,6 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeWeather, fetchWeather, weatherUrls, LEVELS } from '../local-server/weather.mjs';
+import { normalizeWeather, fetchWeather, weatherUrls, LEVELS, getJson } from '../local-server/weather.mjs';
+
+test('temporary upstream HTTP and connection failures recover with bounded retries', async () => {
+  let calls = 0;
+  const result = await getJson('https://example.test', async () => {
+    calls++;
+    if (calls === 1) throw new TypeError('fetch failed');
+    if (calls === 2) return { ok: false, status: 503 };
+    return { ok: true, json: async () => ({ recovered: true }) };
+  });
+  assert.equal(calls, 3); assert.equal(result.recovered, true);
+});
+
+test('permanent failures do not retry and exhausted rate limits have a safe actionable code', async () => {
+  let calls = 0;
+  await assert.rejects(getJson('https://example.test', async () => {
+    calls++; return { ok: false, status: 400 };
+  }), { code: 'OPEN_METEO_HTTP', upstreamStatus: 400, source: 'default' });
+  assert.equal(calls, 1);
+  calls = 0;
+  await assert.rejects(getJson('https://example.test', async () => {
+    calls++; return { ok: false, status: 429 };
+  }), { code: 'OPEN_METEO_RATE_LIMIT', status: 503 });
+  assert.equal(calls, 3);
+  await assert.rejects(getJson('https://api.open-meteo.com/v1/forecast?models=jma_msm', async () => { throw new Error('secret', { cause: { code: 'ENOTFOUND' } }); }),
+    error => error.code === 'OPEN_METEO_CONNECTION' && error.source === 'jma_msm' && error.networkCode === 'ENOTFOUND' && !error.message.includes('secret'));
+});
 
 const atmosphere = () => ({ timezone: 'Asia/Seoul', hourly: { time: ['2026-07-01T00:00', '2026-07-01T01:00'], temperature_2m: [24, null], relative_humidity_2m: [95, 94] } });
 test('SST joins by KST timestamp instead of array position; missing values remain null', () => {

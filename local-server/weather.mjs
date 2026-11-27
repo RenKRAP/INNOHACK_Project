@@ -5,15 +5,52 @@ const profileVariables = LEVELS.flatMap(p => [`relative_humidity_${p}hPa`, `geop
 // Shared across coordinates: preset updates must not create an upstream burst.
 let active = 0;
 const waiting = [];
+export class OpenMeteoError extends Error {
+  constructor(code, message, status = 502) { super(message); this.code = code; this.status = status; }
+}
+const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+const retryableStatus = status => status === 429 || status >= 500;
 export async function getJson(url, fetcher = fetch) {
   if (active >= 2) await new Promise(resolve => waiting.push(resolve));
   else active++;
   try {
-    const response = await fetcher(url, { signal: AbortSignal.timeout(20000), headers: { 'User-Agent': 'OnSeafog-local/1.0' } });
-    if (!response.ok) throw new Error(`Open-Meteo HTTP ${response.status}`);
-    const result = await response.json();
-    if (result.error) throw new Error(result.reason || 'Open-Meteo error');
-    return result;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let response;
+      try {
+        response = await fetcher(url, { signal: AbortSignal.timeout(20000), headers: { 'User-Agent': 'OnSeafog-local/1.0' } });
+      } catch (error) {
+        if (attempt < 2) { await pause(500 * (attempt + 1)); continue; }
+        const failure = new OpenMeteoError('OPEN_METEO_CONNECTION', 'Open-Meteo 연결에 실패했거나 응답 시간이 초과되었습니다. 잠시 후 새로고침해 주세요.');
+        const networkCode = error?.cause?.code || error?.code;
+        if (['ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_SOCKET'].includes(networkCode)) failure.networkCode = networkCode;
+        throw failure;
+      }
+      if (!response.ok) {
+        if (retryableStatus(response.status) && attempt < 2) {
+          // Consume the body before retrying so the connection can be reused.
+          await response.text?.().catch(() => {});
+          await pause(500 * (attempt + 1)); continue;
+        }
+        const limited = response.status === 429;
+        const failure = new OpenMeteoError(limited ? 'OPEN_METEO_RATE_LIMIT' : 'OPEN_METEO_HTTP',
+          limited ? 'Open-Meteo 요청 한도에 도달했습니다. 잠시 후 다시 조회해 주세요.'
+            : `Open-Meteo가 기상자료 요청에 오류를 반환했습니다 (HTTP ${response.status}). 잠시 후 다시 조회해 주세요.`, limited ? 503 : 502);
+        failure.upstreamStatus = response.status;
+        throw failure;
+      }
+      let result;
+      try { result = await response.json(); }
+      catch { throw new OpenMeteoError('OPEN_METEO_FORMAT', 'Open-Meteo 응답을 해석하지 못했습니다. 잠시 후 다시 조회해 주세요.'); }
+      if (result.error) throw new OpenMeteoError('OPEN_METEO_RESPONSE', 'Open-Meteo가 기상자료 요청을 처리하지 못했습니다.');
+      return result;
+    }
+  } catch (error) {
+    if (error instanceof OpenMeteoError) {
+      const endpoint = new URL(url);
+      error.source = endpoint.hostname === 'marine-api.open-meteo.com' ? 'marine'
+        : endpoint.searchParams.get('models') === 'jma_msm' ? 'jma_msm' : 'default';
+    }
+    throw error;
   } finally {
     if (waiting.length) waiting.shift()();
     else active--;
@@ -40,7 +77,11 @@ export function weatherUrls(start, end, forecast = false, location = LOCATION) {
 }
 const number = x => typeof x === 'number' && Number.isFinite(x) ? x : null;
 export function normalizeWeather(atmosphere, marine, supplement = atmosphere) {
-  if (!atmosphere.hourly?.time?.length || atmosphere.timezone !== 'Asia/Seoul') throw new Error('Invalid atmosphere time series / timezone');
+  if (!atmosphere?.hourly?.time?.length || atmosphere.timezone !== 'Asia/Seoul') {
+    const error = new OpenMeteoError('OPEN_METEO_DATA', 'Open-Meteo 기상자료의 시간대 또는 시간별 자료 형식이 올바르지 않습니다 (timezone/time series).');
+    error.source = 'atmosphere';
+    throw error;
+  }
   const h = atmosphere.hourly;
   const sea = new Map((marine?.hourly?.time ?? []).map((t, i) => [t, number(marine.hourly.sea_surface_temperature?.[i])]));
   const extra = supplement?.hourly;
