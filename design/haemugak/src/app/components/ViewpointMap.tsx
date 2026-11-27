@@ -240,6 +240,7 @@ export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, o
               </div>
               <div className="flex min-h-16 flex-wrap items-center px-3 py-2.5 text-[11px] leading-4 text-muted-foreground sm:px-4">
                 <div className="flex flex-wrap gap-x-2.5 gap-y-1">
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap"><span aria-hidden="true" className="h-2.5 w-3.5 rounded-[2px] border border-slate-400 bg-white" />해무 출현 예상 영역</span>
                   {([["above", "해무 위"], ["edge", "눈높이"], ["inside", "해무 속"], ["outside", "영역 밖"], ["unknown", "미확인"]] as const).map(([tone, label]) => (
                     <span key={tone} className="inline-flex items-center gap-1 whitespace-nowrap"><span aria-hidden="true" className={`size-1.5 rounded-full ${pinDots[tone]}`} />{label}</span>
                   ))}

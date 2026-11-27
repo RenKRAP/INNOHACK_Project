@@ -1,15 +1,16 @@
 ﻿# INNOHACK project context
 
 ## Verified state (2026-11-28)
-- Root: C:/Users/wooji/OneDrive/Desktop/INNOHACK. Origin: https://github.com/RenKRAP/INNOHACK_Project.git. Active branch main; HEAD c613ba0de779adb38ca70c41c4a0e9609100a97a at task start.
-- User authorized committing these UI changes and pushing main to origin. Remote main matched c613ba0 before publication; no separate deployment operation requested. Preserve Local_server/, ignored .env/.env.local secrets, and untracked seafog_example/.
+- Root: C:/Users/wooji/OneDrive/Desktop/INNOHACK. Origin: https://github.com/RenKRAP/INNOHACK_Project.git. Active branch main; HEAD ce4fd0a4399a00ac562befa610c747234da0ed8a, published to origin/main in the previous task.
+- User authorized committing and publishing the map legend explanation to origin/main. Remote main matched ce4fd0a before publication; no separate deployment operation requested. Preserve Local_server/, ignored .env/.env.local secrets, and untracked seafog_example/.
 - Haemugak source: design/haemugak (React/Vite); production files: public/haemugak. Build with npm.cmd run build --prefix design/haemugak. Stable main.js/style.css, embedded fonts and third-party licenses are generated/preserved by the build. Root serves Haemugak; original app remains available at /index.html.
 
-## Current local UI changes
+## UI state and current local change
 - Removed the home hero's example forecast summary card (peak time/probability and recommended viewpoint), retaining the hero image, title and CTA.
 - Moved the forecast-hour dropdown from the hourly chart into the map header, immediately left of the calendar. Calendar remains at the right beside the coastal-area title. Chart header now displays the selected reference time.
 - Removed the duplicate map/3D navigation, /map/terrain route and Viewpoint3DScene component. Home and map routes remain.
 - Matched map and nearby-photo header, viewport and footer heights at responsive sizes. Legend labels are now compact 11px text: 해무 위 / 눈높이 / 해무 속 / 영역 밖 / 미확인. Detailed status wording remains in location information.
+- Added a bordered white swatch with "해무 출현 예상 영역" (removed the requested white-area prefix) to the compact map legend. Production build and git diff --check passed for this text-only addition; no new browser preview or tests run. Existing bundle-size warning remains.
 - Other-viewpoints sidebar shows single-line names only. Hourly chart is below the map on the left; selected location and altitude controls are on the right. Height comparison appears above altitude saving.
 
 ## Synthetic forecast behavior retained
