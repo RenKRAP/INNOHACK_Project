@@ -1,8 +1,8 @@
 ﻿# INNOHACK project context
 
 ## Verified current state (2026-11-27)
-- Root: C:/Users/wooji/OneDrive/Desktop/INNOHACK. Origin: https://github.com/RenKRAP/INNOHACK_Project.git. Local HEAD c4cb91a; fetched origin/main 254cfae. Existing dirty work preserved without reset/merge. No commit, push, or deployment performed for this change.
-- Vanilla HTML/CSS/JS, Leaflet/OpenStreetMap, Node >=22, explainable fog rule model. Application API: local-server/. Preserve remote Supabase backend server/, user's modified source/OnSeafog.docx, and preexisting model/UI edits.
+- Root: C:/Users/wooji/OneDrive/Desktop/INNOHACK. Origin: https://github.com/RenKRAP/INNOHACK_Project.git. User authorized committing accumulated changes and pushing main. Local change commit 3003612 integrated with remote main 254cfae, preserving remote README organization and HOST configuration. No deployment commands run.
+- Vanilla HTML/CSS/JS, Leaflet/OpenStreetMap, Node >=22, explainable fog rule model. Application API: local-server/. Remote renamed backend Local_server/ is preserved unchanged; user's modified source/OnSeafog.docx and preexisting model/UI edits are included.
 - Latest forecast now uses three Open-Meteo requests per coordinate: JMA MSM (models=jma_msm) 5 km temperature/dew point/RH/wind speed/direction; default forecast (models omitted) visibility and RH/geopotential height at 1000/975/950/925/900/850 hPa; Marine SST (cell_selection=sea). See docs/open-meteo-forecast.md and local-server/weather.mjs.
 - All requests use 48 forecast hours and Asia/Seoul. Wind is m/s; visibility is meters in data/CSV and km in UI. Timestamp joins preserve missing values as null. Visibility is displayed/exported, not added to the existing score formula. Default-model profiles and Marine have separate resolutions; do not describe all inputs as 5 km or 1 km.
 - Shared outbound concurrency 2 across coordinates; timeout 20 seconds per request. Forecast cache TTL 5 minutes, archive TTL 24 hours, maximum 32 entries; duplicate requests share in-flight work. refresh=1 bypasses cached values. Visible pages refresh stale forecasts every 5 minutes and upon returning to a stale tab; manual refresh bypasses browser/server caches. Provider issuance timing remains independent.
@@ -12,7 +12,7 @@
 - Date dropdown is authoritative for Follow the fog: changing the day refreshes its chart/hour selection and visible date; retain the clock hour when available, otherwise use the first hour. Same-mode asynchronous refresh reads the latest selection after fetching. Mode changes use the new mode's current/recommended date. Logic is shared in public/analysis-time.js.
 - Verification: all 48 tests passed, build and app syntax checks passed, diff check passed (line-ending notices only). Tests include date precedence, partial-day clock selection, refresh selection, and mode/date fallback alongside weather/model coverage. Browser preview previously could not run because browser access host was unavailable; changed UI is not visually verified. No temporary servers started for the date change.
 - Preexisting Node server at 127.0.0.1:4173 was preserved; restart to load new backend. npm.cmd run dev builds and serves locally.
-- server/ unchanged (HEAD tree 6aa14ba92051faaee5f01076ba9798cf189b04e3). July data SHA256 unchanged: f418b377f7b39f664fe33e00a614af112f87675008906937c12b6d8ee3b63889.
+- Local_server/ preserves the remote backend (tree 6aa14ba92051faaee5f01076ba9798cf189b04e3); old server/ path removed by the remote rename. July data SHA256 unchanged: f418b377f7b39f664fe33e00a614af112f87675008906937c12b6d8ee3b63889.
 
 ## Preserved behavior and historical notes
 - data/july-2026.json: 744 consecutive KST hourly GFS historical forecast/Marine records, not observed fog or issue-time hindcasts. GFS surface about 13 km, profiles about 25 km; exact stored Marine product unpinned. docs/weather-data-audit.md records consistency checks, not measured accuracy.
@@ -25,4 +25,4 @@
 ## Remaining work and preferences
 - Read this project summary for prior context; inspect only task-relevant files. Keep concise, English, secret-free.
 - Visual verification pending due unavailable browser automation. Observations/labels, calibration, terrain/sightlines, and full-district coverage remain future work.
-- OSM tiles and uncached forecasts need network. No deployment/publishing authorized; remote backend pushes can trigger deployment.
+- OSM tiles and uncached forecasts need network. Git push to main is authorized; separate deployment work remains out of scope. Hosting automation status is unknown. .env stays ignored; only the blank .env.example template is tracked.
