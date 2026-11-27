@@ -63,13 +63,7 @@ export function HaemugakHero() {
             </dl>
           </aside>
           <div className="mt-6 flex flex-wrap gap-2.5">
-            <Link
-              to="/forecast"
-              className="inline-flex min-h-11 items-center gap-2 rounded-sm border border-[#f8f4e9] bg-[#f8f4e9] px-4 text-sm font-medium text-[#14253d] transition-colors hover:border-white hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              해무 예보 보기
-              <ArrowRight aria-hidden="true" className="h-4 w-4" />
-            </Link>
+
             <Link
               to="/map"
               className="inline-flex min-h-11 items-center gap-2 rounded-sm border border-white/55 bg-[#0c2843]/60 px-4 text-sm font-medium text-white transition-colors hover:border-white hover:bg-[#0c2843]/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"

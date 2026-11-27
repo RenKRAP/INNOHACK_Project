@@ -25,12 +25,7 @@ export function HaemugakHeader() {
           >
             홈으로
           </NavLink>
-          <NavLink
-            to="/forecast"
-            className="relative whitespace-nowrap py-1 text-sm font-medium tracking-wide text-foreground/85 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:underline aria-[current=page]:underline-offset-4"
-          >
-            해무 예보
-          </NavLink>
+
           <NavLink
             to="/map"
             className="relative whitespace-nowrap py-1 text-sm font-medium tracking-wide text-foreground/85 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:underline aria-[current=page]:underline-offset-4"

@@ -1,3 +1,5 @@
+import { Camera } from "lucide-react";
+import { canPhotograph, PHOTO_THRESHOLD } from "../data/syntheticJuly2030";
 import { useId } from "react";
 import {
   Area,
@@ -27,6 +29,7 @@ function FogTooltip({ active, payload }: CustomTooltipProps) {
       <p className="font-tabular font-medium text-foreground">{item.time} · {item.probability}%</p>
       <p className="mt-1 text-muted-foreground">예상 해무층 높이 {item.fogTopMeters} m</p>
       <p className="mt-1 text-muted-foreground">{item.note}</p>
+      {canPhotograph(item.probability) && <p className="mt-1 font-medium text-[#235c53]">촬영 가능 시간 · 확률 70% 이상</p>}
     </div>
   );
 }
@@ -34,13 +37,19 @@ function FogTooltip({ active, payload }: CustomTooltipProps) {
 interface HourlyFogChartProps {
   selected: HourlyForecastPoint;
   compact?: boolean;
+  referenceTime?: string;
+  onForecastSelect?: (forecast: HourlyForecastPoint) => void;
+  series?: HourlyForecastPoint[];
+  date?: string;
 }
 
-export function HourlyFogChart({ selected, compact = false }: HourlyFogChartProps) {
+export function HourlyFogChart({ selected, referenceTime, compact = false, onForecastSelect, series = HOURLY_FORECAST, date }: HourlyFogChartProps) {
   const chartId = useId();
   const titleId = `${chartId}-title`;
   const fillId = `${chartId}-fill`;
   const Heading = compact ? "h2" : "h1";
+  const photoHours = series.filter(point => canPhotograph(point.probability));
+  const observable = series.filter(point => point.probability >= 65);
 
   return (
     <section
@@ -56,11 +65,27 @@ export function HourlyFogChart({ selected, compact = false }: HourlyFogChartProp
             시간대별 해무 확률
           </Heading>
         </div>
-        <p className="font-tabular text-xs text-accent sm:text-sm">
-          <time dateTime={selected.time}>{selected.time}</time> 선택 · {selected.probability}%
-        </p>
+        <div className="flex flex-wrap items-center gap-2.5 text-sm text-accent">
+          {onForecastSelect ? (
+            <label className="inline-flex items-center gap-2 font-medium">
+              예보 시각
+              <select aria-label="지도 예보 시각" value={selected.time} onChange={(event) => {
+                const match = series.find(({ time }) => time === event.target.value);
+                if (match) onForecastSelect(match);
+              }} className="font-tabular min-h-10 rounded-sm border border-border bg-card px-2.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+                {series.map(({ time }) => <option key={time} value={time}>{time}</option>)}
+              </select>
+            </label>
+          ) : <span className="font-tabular"><time dateTime={selected.time}>{selected.time}</time> 선택</span>}
+        </div>
       </div>
+      {date && <p aria-live="polite" className="mt-3 text-xs leading-relaxed text-muted-foreground">{date} · 가상 데이터 · {observable.length ? `해무 관측 가능 ${observable.length}시간 (확률 65% 이상)` : "해무 관측 가능 시간 없음"}</p>}
 
+      {referenceTime && <p aria-live="polite" className="mt-2 text-xs text-muted-foreground">지도 클릭 시각 {referenceTime} KST · 선택 날짜의 {selected.time}–{String(selected.hour + 1).padStart(2, "0")}:00 시간대 적용</p>}
+      <p role="status" className={`mt-3 flex items-start gap-2 rounded-sm px-3 py-2 text-xs ${photoHours.length ? "bg-[#e1eee5] text-[#235c53]" : "bg-secondary text-muted-foreground"}`}>
+        <Camera aria-hidden="true" className="size-4 shrink-0" />
+        <span>{photoHours.length ? `촬영 가능 · ${photoHours.map(p => p.time).join(", ")} (70% 이상)` : "촬영 가능 시간 없음 (70% 이상 기준)"}{date && " · 가상 시나리오 기준"}</span>
+      </p>
       <div className={compact ? "mt-4 flex min-h-0 flex-1 flex-col" : "mt-5 rounded-sm border border-border bg-card px-4 py-5 sm:px-6"}>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-2">
@@ -75,7 +100,7 @@ export function HourlyFogChart({ selected, compact = false }: HourlyFogChartProp
         <div className={compact ? "relative mt-4 min-h-64 flex-1" : "relative mt-4 h-[280px] sm:h-[320px]"}>
           <div className="absolute inset-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={HOURLY_FORECAST} margin={{ top: 14, right: 10, left: 0, bottom: 5 }}>
+              <AreaChart data={series} margin={{ top: 14, right: 10, left: 0, bottom: 5 }}>
                 <defs>
                   <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.28} />
@@ -83,7 +108,8 @@ export function HourlyFogChart({ selected, compact = false }: HourlyFogChartProp
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="var(--border)" />
-                <ReferenceArea x1={FORECAST_WINDOW.start} x2={FORECAST_WINDOW.end} fill="var(--accent)" fillOpacity={0.08} />
+                {observable.length > 0 && <ReferenceArea x1={observable[0].time} x2={observable[observable.length - 1].time} fill="var(--accent)" fillOpacity={0.08} />}
+                <ReferenceLine y={PHOTO_THRESHOLD} stroke="#23675d" strokeDasharray="5 3" label={{ value: "촬영 70%", position: "insideTopRight", fill: "#235c53", fontSize: 10 }} />
                 <ReferenceLine x={selected.time} stroke="var(--accent)" strokeDasharray="3 3" strokeOpacity={0.65} />
                 <XAxis
                   dataKey="time"
@@ -112,6 +138,7 @@ export function HourlyFogChart({ selected, compact = false }: HourlyFogChartProp
                   isAnimationActive={false}
                   activeDot={{ r: 4, fill: "var(--accent)", stroke: "var(--card)", strokeWidth: 2 }}
                 />
+                {photoHours.map(point => <ReferenceDot key={point.time} x={point.time} y={point.probability} r={4} fill="#23675d" stroke="white" strokeWidth={1.5} />)}
                 <ReferenceDot x={selected.time} y={selected.probability} r={5} fill="var(--accent)" stroke="var(--card)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { divIcon, latLngBounds, map, marker, tileLayer, type Map as LeafletMap, type Marker } from "leaflet";
+import { divIcon, latLngBounds, map, marker, polygon, tileLayer, type Map as LeafletMap, type Marker, type Polygon } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../../styles/coastal-map.css";
 import type { MapLocation } from "../data/coastalViewpoints";
 
-export type MapTone = "above" | "edge" | "inside" | "unknown";
+import { MAP_BOUNDS } from "../data/syntheticJuly2030";
+
+export type MapTone = "above" | "edge" | "inside" | "unknown" | "outside";
 
 interface MapPin {
   location: MapLocation;
@@ -15,13 +17,14 @@ interface MapPin {
 }
 
 interface CoastalMapProps {
+  fogPolygon: { lat: number; lon: number }[] | null;
   pins: MapPin[];
   selected: MapLocation;
   onPick: (lat: number, lon: number) => void;
   onSelect: (location: MapLocation) => void;
 }
 
-const bounds = latLngBounds([35.128, 129.075], [35.198, 129.190]);
+const bounds = latLngBounds([MAP_BOUNDS.south, MAP_BOUNDS.west], [MAP_BOUNDS.north, MAP_BOUNDS.east]);
 
 function pinIcon(label: string, tone: MapTone, selected: boolean) {
   return divIcon({
@@ -33,11 +36,12 @@ function pinIcon(label: string, tone: MapTone, selected: boolean) {
   });
 }
 
-export function CoastalMap({ pins, selected, onPick, onSelect }: CoastalMapProps) {
+export function CoastalMap({ pins, selected, onPick, onSelect, fogPolygon }: CoastalMapProps) {
   const target = useRef<HTMLDivElement>(null);
   const instance = useRef<LeafletMap | null>(null);
   const pinLayers = useRef(new Map<string, Marker>());
   const chosenLayer = useRef<Marker | null>(null);
+  const fogLayer = useRef<Polygon | null>(null);
   const handlers = useRef({ onPick, onSelect });
   const [tilesUnavailable, setTilesUnavailable] = useState(false);
 
@@ -72,9 +76,25 @@ export function CoastalMap({ pins, selected, onPick, onSelect }: CoastalMapProps
       leaflet.remove();
       instance.current = null;
       chosenLayer.current = null;
+      fogLayer.current = null;
       pinLayers.current.clear();
     };
   }, []);
+
+  useEffect(() => {
+    if (!instance.current) return;
+    if (!fogPolygon) {
+      fogLayer.current?.remove();
+      fogLayer.current = null;
+      return;
+    }
+    const corners = fogPolygon.map(({ lat, lon }) => [lat, lon] as [number, number]);
+    if (fogLayer.current) fogLayer.current.setLatLngs(corners);
+    else fogLayer.current = polygon(corners, {
+      color: "#ffffff", weight: 1.5, opacity: 0.8, fillColor: "#ffffff", fillOpacity: 0.3,
+      interactive: false,
+    }).addTo(instance.current);
+  }, [fogPolygon]);
 
   useEffect(() => {
     const leaflet = instance.current;
