@@ -57,6 +57,10 @@ export function createApp({ staticRoot = resolve(root, 'dist'), weatherLoader = 
           : json(502, { error: '선택한 위치의 기상자료를 가져오지 못했습니다. 네트워크와 자료 제공기관 연결을 확인한 뒤 다시 시도해 주세요.' }); }
       }
       if (url.pathname.startsWith('/api/')) return json(404, { error: 'API not found' });
+      if (['/', '/haemugak', '/haemugak/'].includes(url.pathname)) {
+        res.writeHead(302, { Location: '/haemugak/index.html' + url.search, 'Cache-Control': 'no-store' });
+        return res.end();
+      }
       const decoded = decodeURIComponent(url.pathname);
       const path = resolve(staticRoot, '.' + (decoded === '/' ? '/index.html' : decoded));
       if (!path.startsWith(staticRoot + sep)) return json(403, { error: 'Forbidden' });

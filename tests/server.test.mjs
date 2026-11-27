@@ -41,7 +41,18 @@ test('local static page, archive, validation, HEAD and unknown routes', async t 
   assert.equal((await fetch(base + '/api/weather?mode=invalid')).status, 400);
   assert.equal((await fetch(base + '/api/no')).status, 404); assert.equal((await fetch(base + '/missing')).status, 404);
   assert.equal((await fetch(base + '/api/health', { method: 'POST' })).status, 405);
-  const home = await fetch(base); assert.equal(home.status, 200); assert.match(await home.text(), /OnSeafog/);
+  for (const route of ['/', '/haemugak', '/haemugak/']) {
+    const redirect = await fetch(base + route + '?preview=1', { redirect: 'manual' });
+    assert.equal(redirect.status, 302);
+    assert.equal(redirect.headers.get('location'), '/haemugak/index.html?preview=1');
+  }
+  const home = await fetch(base); assert.equal(home.status, 200); assert.match(await home.text(), /\.\/main\.js/);
+  assert.equal(new URL(home.url).pathname, '/haemugak/index.html');
+  const legacy = await fetch(base + '/index.html'); assert.equal(legacy.status, 200); assert.match(await legacy.text(), /OnSeafog/);
+  for (const [file, type] of [['main.js', 'text/javascript'], ['style.css', 'text/css']]) {
+    const asset = await fetch(base + '/haemugak/' + file);
+    assert.equal(asset.status, 200); assert.ok(asset.headers.get('content-type').startsWith(type));
+  }
   const head = await fetch(base, { method: 'HEAD' }); assert.equal(head.status, 200); assert.equal(await head.text(), '');
 });
 test('concurrent latest requests share a fetch and subsequent requests reuse cache', async t => {

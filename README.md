@@ -29,7 +29,7 @@ npm.cmd run dev
 
 ## 해무각 디자인 시안
 
-위 서버를 실행한 뒤 <http://127.0.0.1:4173/haemugak/index.html>에서 홈, 해무 예보, 전망 지도와 3D 해무 단면을 볼 수 있습니다. [미리보기 HTML](public/haemugak/index.html)은 압축을 풀거나 저장소를 복제한 뒤 브라우저에서 직접 열 수도 있습니다. 시안의 해무 수치는 예시 데이터입니다.
+위 서버를 실행한 뒤 <http://127.0.0.1:4173/>에서 홈, 해무 예보, 전망 지도와 3D 해무 단면을 볼 수 있습니다. 기본 주소는 `/haemugak/index.html`로 연결되며, 기존 OnSeafog 화면은 `/index.html`에서 볼 수 있습니다. [미리보기 HTML](public/haemugak/index.html)은 압축을 풀거나 저장소를 복제한 뒤 브라우저에서 직접 열 수도 있습니다. 시안의 해무 수치는 예시 데이터입니다.
 
 React 소스를 수정하려면 저장소 루트에서 아래 명령을 실행하세요. 사진과 지형 자료 출처는 [해무각 자료 출처](design/haemugak/ATTRIBUTIONS.md)에 있습니다.
 
