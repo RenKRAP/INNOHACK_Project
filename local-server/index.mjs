@@ -62,6 +62,6 @@ export function createApp({ staticRoot = resolve(root, 'dist'), weatherLoader = 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const port = Number(process.env.PORT || 4173);
   const server = createApp();
-  server.listen(port, '127.0.0.1', () => console.log(`OnSeafog local preview: http://127.0.0.1:${port} (not deployed)`));
+  server.listen(port, process.env.HOST || '127.0.0.1', () => console.log(`OnSeafog local preview: http://127.0.0.1:${port} (not deployed)`));
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close(() => process.exit(0)));
 }
