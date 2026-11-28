@@ -5,6 +5,11 @@
   touch-action: pan-y;
 }
 
+.coastal-leaflet .leaflet-tooltip,
+.coastal-leaflet .leaflet-popup-content-wrapper {
+  font-family: var(--app-font-family);
+}
+
 .coastal-leaflet .coastal-pin {
   display: grid;
   place-items: center;

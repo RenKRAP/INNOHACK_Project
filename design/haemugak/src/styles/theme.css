@@ -2,6 +2,7 @@
 
 :root {
   --font-size: 16px;
+  --app-font-family: 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
   --background: #f8f4e9;
   --foreground: #14253d;
   --card: #fffaf0;
@@ -126,17 +127,17 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    font-family: var(--app-font-family);
     -webkit-font-smoothing: antialiased;
   }
 
   .font-display {
-    font-family: 'Noto Serif KR', 'Nanum Myeongjo', Batang, serif;
+    font-family: var(--app-font-family);
     font-weight: 500;
   }
 
   .font-tabular {
-    font-family: 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    font-family: var(--app-font-family);
     font-variant-numeric: tabular-nums;
   }
 

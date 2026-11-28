@@ -1,12 +1,4 @@
 @font-face {
-  font-family: 'Noto Serif KR';
-  src: url('../assets/noto-serif-kr.woff2?inline') format('woff2');
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-}
-
-@font-face {
   font-family: 'Noto Sans KR';
   src: url('../assets/noto-sans-kr.woff2?inline') format('woff2');
   font-style: normal;

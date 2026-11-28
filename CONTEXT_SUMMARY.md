@@ -1,11 +1,12 @@
-﻿# INNOHACK project context
+# INNOHACK project context
 
 ## Verified state (2026-11-28)
-- Root: C:/Users/wooji/OneDrive/Desktop/INNOHACK. Origin: https://github.com/RenKRAP/INNOHACK_Project.git. Active branch main; local HEAD 946b376 (notice removals); last verified origin/main f9958037b2e41e78128708de82adabb34731a2a6.
-- Current request requires temporally disjoint regions, daily 3-8 observable hours, aligned UI and an expanded mountain/island list, followed by verification, commit and GitHub push. Deployment is not requested. Preserve Local_server/, ignored .env/.env.local secrets, and untracked seafog_example/.
+- Root: C:/Users/wooji/OneDrive/Desktop/INNOHACK. Origin: https://github.com/RenKRAP/INNOHACK_Project.git. Active branch main. Font/header changes follow 1312b0f (regional schedules/UI), previously pushed to origin/main.
+- Current request: commit and push the verified font/header changes to GitHub. No deployment requested. Preserve Local_server/, ignored .env/.env.local secrets, and untracked seafog_example/.
 - Haemugak source: design/haemugak (React/Vite); production files: public/haemugak. Build with npm.cmd run build --prefix design/haemugak. Stable main.js/style.css, embedded fonts and third-party licenses are generated/preserved by the build. Root serves Haemugak; original app remains available at /index.html.
 
 ## UI state and current local change
+- Unified headings, body, tabular text and map tooltip/popup text with the shared Noto Sans KR font stack. Removed the unused serif font-face from CSS. Removed the top-bar 홈으로 button; the brand link and map link remain. Rebuilt production assets.
 - Removed the home hero's example forecast summary card (peak time/probability and recommended viewpoint), retaining the hero image, title and CTA.
 - Moved the forecast-hour dropdown from the hourly chart into the map header, immediately left of the calendar. Calendar remains at the right beside the coastal-area title. Chart header now displays the selected reference time.
 - Removed the duplicate map/3D navigation, /map/terrain route and Viewpoint3DScene component. Home and map routes remain.
@@ -23,7 +24,7 @@
 - Photography indicators mark hours >=70%. Pins compare recorded elevation to synthetic fog height with a 25 m margin. Buildings use maximum heights: Ipark 292 m, Exllu 153.23 m, LCT 411.6 m; natural elevations: Hwangnyeong 427 m, Jangsan 634 m, Dongbaek 32 m. Dalmaji remains unknown. Building heights are a user convention, not surveyed rooftop elevations.
 
 ## Verification
-- Current changes: production build and npm.cmd test (61/61) passed. Tests cover July counts, daily union of consecutive 3-8 active hours, regional temporal non-overlap, spatial forecast differences, map bounds, 3 x 3 km dimensions, spatial non-overlap and deterministic behavior. git diff --check passed. Existing Vite bundle-size warning remains.
+- Font/header changes: production build and npm.cmd test (61/61) passed. Source checks confirm no remaining serif family or top-bar 홈으로 button. Tests cover July counts, daily union of consecutive 3-8 active hours, regional temporal non-overlap, spatial forecast differences, map bounds, 3 x 3 km dimensions, spatial non-overlap and deterministic behavior. git diff --check passed. Existing Vite bundle-size warning remains.
 - Current browser visual verification could not complete: browser access host unavailable. Cloud appearance and click-through behavior still need a manual visual check. Historical Chrome preview verified the prior UI layout and functioning map/chart rendering.
 - No temporary server started for the current changes. Historical temporary Python server on 4178 was stopped; pre-existing server on 4173 is preserved.
 

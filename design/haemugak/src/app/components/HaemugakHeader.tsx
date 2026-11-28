@@ -19,14 +19,6 @@ export function HaemugakHeader() {
 
         <nav aria-label="주 메뉴" className="flex items-center gap-3 sm:gap-7">
           <NavLink
-            to="/"
-            end
-            className="inline-flex min-h-9 items-center whitespace-nowrap rounded-sm border border-border px-2.5 text-sm font-medium transition-colors hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-[current=page]:bg-secondary"
-          >
-            홈으로
-          </NavLink>
-
-          <NavLink
             to="/map"
             className="relative whitespace-nowrap py-1 text-sm font-medium tracking-wide text-foreground/85 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:underline aria-[current=page]:underline-offset-4"
           >
