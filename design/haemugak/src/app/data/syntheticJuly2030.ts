@@ -2,12 +2,14 @@ import type { HourlyForecastPoint } from "./haemugakData";
 
 // Reproducible demonstration scenarios, not observations or a real 2030 forecast.
 export const SYNTHETIC_DATES = Array.from({ length: 31 }, (_, i) => `2030-07-${String(i + 1).padStart(2, "0")}`);
-export const SYNTHETIC_FOG_DAYS = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
+export const SYNTHETIC_FOG_DAYS = Array.from({ length: 31 }, (_, i) => i + 1).filter(day => day % 3 !== 1);
 export const SYNTHETIC_DEFAULT_DATE = "2030-07-02";
 export const OBSERVABLE_THRESHOLD = 65;
 export const MAP_BOUNDS = { south: 35.128, west: 129.075, north: 35.198, east: 129.190 } as const;
-// Date-seeded randomness keeps a single scenario stable while selecting hours or points.
-export function fogFootprint(date: string) {
+export interface FogFootprint { lat: number; lon: number; widthKm: number; heightKm: number }
+
+// Date-seeded randomness keeps each scenario stable while selecting hours or points.
+function footprintCandidates(date: string): FogFootprint[] {
   if (!SYNTHETIC_DATES.includes(date)) throw new RangeError("Synthetic data is available only for July 2030.");
   let seed = Number(date.replaceAll("-", ""));
   const random = () => {
@@ -16,12 +18,30 @@ export function fogFootprint(date: string) {
     value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
     return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
   };
-  // Conservative margins exceed the projected square's 1.5 km half-width.
-  return {
-    lat: MAP_BOUNDS.south + 0.015 + random() * (MAP_BOUNDS.north - MAP_BOUNDS.south - 0.030),
-    lon: MAP_BOUNDS.west + 0.019 + random() * (MAP_BOUNDS.east - MAP_BOUNDS.west - 0.038),
+  // Shuffle four disjoint slots. Conservative margins keep each projected square
+  // inside its slot, leaving a gap even after geographic projection.
+  const slots = [0, 1, 2, 3];
+  for (let i = slots.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [slots[i], slots[j]] = [slots[j], slots[i]];
+  }
+  const latSpan = (MAP_BOUNDS.north - MAP_BOUNDS.south) / 2;
+  const lonSpan = (MAP_BOUNDS.east - MAP_BOUNDS.west) / 2;
+  return slots.map(slot => ({
+    lat: MAP_BOUNDS.south + Math.floor(slot / 2) * latSpan + 0.015 + random() * (latSpan - 0.030),
+    lon: MAP_BOUNDS.west + (slot % 2) * lonSpan + 0.019 + random() * (lonSpan - 0.038),
     widthKm: 3, heightKm: 3,
-  };
+  }));
+}
+// Compatibility reference for projection helpers; inactive days have no displayed regions.
+export function fogFootprint(date: string) { return footprintCandidates(date)[0]; }
+export function fogFootprints(date: string): FogFootprint[] {
+  const candidates = footprintCandidates(date);
+  const index = SYNTHETIC_FOG_DAYS.indexOf(Number(date.slice(-2)));
+  if (index < 0) return [];
+  // Five cycles: five single-region, ten double-region and five triple-region days.
+  const count = [3, 2, 2, 1][index % 4];
+  return candidates.slice(0, count);
 }
 export const FOG_FOOTPRINT = fogFootprint(SYNTHETIC_DEFAULT_DATE);
 const EARTH_RADIUS_KM = 6371.0088;
@@ -44,15 +64,27 @@ export function isInsideFogFootprint(location: { lat: number; lon: number }, foo
   const { x, y } = footprintCoordinates(location, footprint);
   return Number.isFinite(x) && Number.isFinite(y) && Math.abs(x) <= footprint.widthKm / 2 + 1e-9 && Math.abs(y) <= footprint.heightKm / 2 + 1e-9;
 }
+export function isInsideFogFootprints(location: { lat: number; lon: number }, footprints: readonly FogFootprint[]) {
+  return footprints.some(footprint => isInsideFogFootprint(location, footprint));
+}
 
 export function syntheticForecast(date: string, location?: { lat: number; lon: number }): HourlyForecastPoint[] {
-  const footprint = fogFootprint(date);
+  const footprints = fogFootprints(date);
   const day = Number(date.slice(-2));
-  const fogDay = SYNTHETIC_FOG_DAYS.includes(day) && isInsideFogFootprint(location ?? footprint, footprint);
-  const start = 3 + day % 3;
-  const duration = 4 + day % 3;
+  const regionIndex = location
+    ? footprints.findIndex(footprint => isInsideFogFootprint(location, footprint)) : -1;
+  // Split the DAILY 3-8-hour observation budget into adjacent, disjoint windows.
+  // A region may last less than three hours; the duration constraint is per day.
+  const dailyStart = 3 + day % 3;
+  const dailyDuration = 3 + day % 6;
+  const windows = footprints.map((_, index) => ({
+    start: dailyStart + Math.floor(index * dailyDuration / footprints.length),
+    end: dailyStart + Math.floor((index + 1) * dailyDuration / footprints.length),
+  }));
   return Array.from({ length: 24 }, (_, hour) => {
-    const observable = fogDay && hour >= start && hour < start + duration;
+    // Without a location, return the daily regional union for the calendar data.
+    const observable = windows.some((window, index) =>
+      (!location || index === regionIndex) && hour >= window.start && hour < window.end);
     const probability = observable ? 70 + (day * 7 + hour * 3) % 24 : 8 + (day * 3 + hour * 5) % 30;
     return {
       time: `${String(hour).padStart(2, "0")}:00`, hour, probability,
@@ -91,8 +123,9 @@ export function koreaClock(now = new Date()) {
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   return { hour: kst.getUTCHours(), time: [kst.getUTCHours(), kst.getUTCMinutes(), kst.getUTCSeconds()].map(v => String(v).padStart(2, "0")).join(":") };
 }
-export function fogPosition(location: { lat: number; lon: number }, elevation: number | null, point: HourlyForecastPoint, footprint = FOG_FOOTPRINT) {
-  if (!isInsideFogFootprint(location, footprint)) return "outside" as const;
+export function fogPosition(location: { lat: number; lon: number }, elevation: number | null, point: HourlyForecastPoint, footprint: FogFootprint | readonly FogFootprint[] = FOG_FOOTPRINT) {
+  const footprints = Array.isArray(footprint) ? footprint : [footprint as FogFootprint];
+  if (!isInsideFogFootprints(location, footprints)) return "outside" as const;
   if (point.probability < OBSERVABLE_THRESHOLD || elevation == null) return "unknown" as const;
   if (elevation > point.fogTopMeters + 25) return "above" as const;
   if (elevation < point.fogTopMeters - 25) return "inside" as const;

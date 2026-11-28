@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { divIcon, latLngBounds, map, marker, polygon, tileLayer, type Map as LeafletMap, type Marker, type Polygon } from "leaflet";
+import { divIcon, latLngBounds, map, marker, svgOverlay, tileLayer, type Map as LeafletMap, type Marker, type SVGOverlay } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../../styles/coastal-map.css";
 import type { MapLocation } from "../data/coastalViewpoints";
@@ -17,7 +17,7 @@ interface MapPin {
 }
 
 interface CoastalMapProps {
-  fogPolygon: { lat: number; lon: number }[] | null;
+  fogPolygons: { lat: number; lon: number }[][];
   pins: MapPin[];
   selected: MapLocation;
   onPick: (lat: number, lon: number) => void;
@@ -25,6 +25,35 @@ interface CoastalMapProps {
 }
 
 const bounds = latLngBounds([MAP_BOUNDS.south, MAP_BOUNDS.west], [MAP_BOUNDS.north, MAP_BOUNDS.east]);
+
+// Screen-pixel scallops stay inside the data rectangle, at most 20px from its edge.
+function fogCloudSvg(width: number, height: number) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("aria-hidden", "true");
+  svg.style.pointerEvents = "none";
+  const inset = Math.min(20, width / 6, height / 6);
+  const vertices = [[inset, inset], [width - inset, inset], [width - inset, height - inset], [inset, height - inset]];
+  let outline = `M ${vertices[0].join(" ")}`;
+  for (let edge = 0; edge < 4; edge++) {
+    const [x, y] = vertices[edge];
+    const [endX, endY] = vertices[(edge + 1) % 4];
+    const dx = endX - x, dy = endY - y;
+    const length = Math.hypot(dx, dy);
+    const lobes = Math.max(1, Math.round(length / 55));
+    const outwardX = dy / length * inset, outwardY = -dx / length * inset;
+    for (let step = 0; step < lobes; step++) {
+      const start = step / lobes, end = (step + 1) / lobes;
+      outline += ` C ${x + dx * (start + 0.2 / lobes) + outwardX} ${y + dy * (start + 0.2 / lobes) + outwardY}, ${x + dx * (end - 0.2 / lobes) + outwardX} ${y + dy * (end - 0.2 / lobes) + outwardY}, ${x + dx * end} ${y + dy * end}`;
+    }
+  }
+  // Single translucent fill avoids darker patches where cloud lobes meet.
+  svg.innerHTML = `<path d="${outline} Z" fill="#fff" fill-opacity="0.3" stroke="#fff" stroke-opacity="0.8" stroke-width="4" stroke-linejoin="round" />
+    <g fill="none" stroke="#fff" stroke-opacity="0.7" stroke-width="3" stroke-linecap="round">
+      <path d="M ${width * 0.25} ${height * 0.43} h ${width * 0.43} M ${width * 0.33} ${height * 0.53} h ${width * 0.43} M ${width * 0.22} ${height * 0.63} h ${width * 0.35}" />
+    </g>`;
+  return svg;
+}
 
 function pinIcon(label: string, tone: MapTone, selected: boolean) {
   return divIcon({
@@ -36,12 +65,12 @@ function pinIcon(label: string, tone: MapTone, selected: boolean) {
   });
 }
 
-export function CoastalMap({ pins, selected, onPick, onSelect, fogPolygon }: CoastalMapProps) {
+export function CoastalMap({ pins, selected, onPick, onSelect, fogPolygons }: CoastalMapProps) {
   const target = useRef<HTMLDivElement>(null);
   const instance = useRef<LeafletMap | null>(null);
   const pinLayers = useRef(new Map<string, Marker>());
   const chosenLayer = useRef<Marker | null>(null);
-  const fogLayer = useRef<Polygon | null>(null);
+  const fogLayers = useRef<SVGOverlay[]>([]);
   const handlers = useRef({ onPick, onSelect });
   const [tilesUnavailable, setTilesUnavailable] = useState(false);
 
@@ -76,25 +105,35 @@ export function CoastalMap({ pins, selected, onPick, onSelect, fogPolygon }: Coa
       leaflet.remove();
       instance.current = null;
       chosenLayer.current = null;
-      fogLayer.current = null;
+      fogLayers.current = [];
       pinLayers.current.clear();
     };
   }, []);
 
   useEffect(() => {
-    if (!instance.current) return;
-    if (!fogPolygon) {
-      fogLayer.current?.remove();
-      fogLayer.current = null;
-      return;
-    }
-    const corners = fogPolygon.map(({ lat, lon }) => [lat, lon] as [number, number]);
-    if (fogLayer.current) fogLayer.current.setLatLngs(corners);
-    else fogLayer.current = polygon(corners, {
-      color: "#ffffff", weight: 1.5, opacity: 0.8, fillColor: "#ffffff", fillOpacity: 0.3,
-      interactive: false,
-    }).addTo(instance.current);
-  }, [fogPolygon]);
+    const leaflet = instance.current;
+    if (!leaflet) return;
+    const clear = () => {
+      fogLayers.current.forEach(layer => layer.remove());
+      fogLayers.current = [];
+    };
+    const draw = () => {
+      clear();
+      fogLayers.current = fogPolygons.map(polygon => {
+        const area = latLngBounds(polygon.map(({ lat, lon }) => [lat, lon] as [number, number]));
+        const topLeft = leaflet.latLngToLayerPoint(area.getNorthWest());
+        const bottomRight = leaflet.latLngToLayerPoint(area.getSouthEast());
+        const svg = fogCloudSvg(Math.max(1, bottomRight.x - topLeft.x), Math.max(1, bottomRight.y - topLeft.y));
+        return svgOverlay(svg, area, { interactive: false }).addTo(leaflet);
+      });
+    };
+    draw();
+    leaflet.on("zoomend moveend resize", draw);
+    return () => {
+      leaflet.off("zoomend moveend resize", draw);
+      clear();
+    };
+  }, [fogPolygons]);
 
   useEffect(() => {
     const leaflet = instance.current;

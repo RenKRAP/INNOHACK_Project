@@ -54,7 +54,7 @@ export function HourlyFogChart({ selected, referenceTime, compact = false, serie
     <section
       aria-labelledby={titleId}
       className={compact
-        ? "flex min-w-0 flex-1 flex-col rounded-sm border border-border bg-card px-4 py-5 sm:px-6"
+        ? "flex min-w-0 flex-1 flex-col rounded-sm border border-border bg-card p-4 sm:p-5"
         : "mx-auto max-w-6xl px-6 py-8 sm:px-10 sm:py-10 lg:px-12"}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">

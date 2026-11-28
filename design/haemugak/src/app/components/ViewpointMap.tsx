@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { LocateFixed, MapPin } from "lucide-react";
+import { CloudFog, LocateFixed, MapPin } from "lucide-react";
 import { COASTAL_VIEWPOINTS, coordinateKey, INLAND_VIEWPOINTS, MAP_VIEWPOINTS, REFERENCE_LOCATION, type MapLocation } from "../data/coastalViewpoints";
-import { fogFootprint, fogPolygon, fogPosition, syntheticFogRange, isInsideFogFootprint, koreaClock, OBSERVABLE_THRESHOLD, SYNTHETIC_DEFAULT_DATE, syntheticForecast } from "../data/syntheticJuly2030";
+import { fogFootprints, fogPolygon, fogPosition, syntheticFogRange, isInsideFogFootprints, koreaClock, OBSERVABLE_THRESHOLD, SYNTHETIC_DEFAULT_DATE, syntheticForecast } from "../data/syntheticJuly2030";
 import { type HourlyForecastPoint } from "../data/haemugakData";
 import { CoastalMap, type MapTone } from "./CoastalMap";
 import { ViewpointPhoto } from "./ViewpointPhoto";
@@ -128,8 +128,8 @@ interface ViewpointMapProps {
 export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, onForecastSelect }: ViewpointMapProps) {
   const [selectedDate, setSelectedDate] = useState(SYNTHETIC_DEFAULT_DATE);
   const [referenceTime, setReferenceTime] = useState<string>();
-  const footprint = useMemo(() => fogFootprint(selectedDate), [selectedDate]);
-  const polygon = useMemo(() => fogPolygon(footprint), [footprint]);
+  const footprints = useMemo(() => fogFootprints(selectedDate), [selectedDate]);
+  const polygons = useMemo(() => footprints.map(footprint => fogPolygon(footprint)), [footprints]);
   const series = syntheticForecast(selectedDate, selected);
   const forecast = series[selectedForecast.hour];
   const fogVisible = syntheticForecast(selectedDate).some(point => point.probability >= OBSERVABLE_THRESHOLD);
@@ -143,7 +143,7 @@ export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, o
   const range = syntheticFogRange(forecast);
   const override = overrideFor(selected);
   const elevation = override ?? selected.elevation;
-  const status = isInsideFogFootprint(selected, footprint) ? viewpointStatus(elevation, range) : {
+  const status = isInsideFogFootprints(selected, footprints) ? viewpointStatus(elevation, range) : {
     tone: "outside" as const, label: "해무 영역 밖", hint: "선택한 위치는 가상 해무의 3 × 3 km 영역 밖이에요.",
   };
 
@@ -170,13 +170,13 @@ export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, o
     const point = syntheticForecast(selectedDate, location)[forecast.hour];
     const pinRange = syntheticFogRange(point);
     const condition = viewpointStatus(height, pinRange);
-    const tone = fogPosition(location, height, point, footprint);
+    const tone = fogPosition(location, height, point, footprints);
     return { location, elevation: height, label: String(index + 1), status: tone === "outside" ? "해무 영역 밖" : condition.label, tone };
   });
 
   function renderPoints(locations: MapLocation[]) {
     return allPins.filter(({ location }) => locations.includes(location)).map((pin) => (
-      <button type="button" key={pin.location.id} aria-pressed={selected.id === pin.location.id} onClick={() => selectAtCurrentTime(pin.location)} className="flex min-h-10 w-full cursor-pointer items-center gap-1.5 border-t border-border px-1 py-2 text-left hover:bg-secondary/60 focus-visible:outline-2 focus-visible:outline-ring aria-pressed:bg-secondary">
+      <button type="button" key={pin.location.id} aria-pressed={selected.id === pin.location.id} onClick={() => selectAtCurrentTime(pin.location)} className="flex h-11 w-full cursor-pointer items-center gap-2 border-t border-border px-1.5 py-2 text-left hover:bg-secondary/60 focus-visible:outline-2 focus-visible:outline-ring aria-pressed:bg-secondary">
         <span aria-hidden="true" className="font-tabular grid size-5 shrink-0 place-items-center rounded-full bg-accent text-[10px] font-medium text-white">{pin.label}</span>
         <span className="min-w-0 flex-1">
           <span className="block whitespace-nowrap text-sm font-medium leading-5">{pin.location.name}</span>
@@ -196,20 +196,17 @@ export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, o
         </header>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(315px,0.7fr)] lg:gap-5">
-          <div className="grid min-w-0 gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-            <section aria-labelledby="coastal-other-points" className="min-w-0 rounded-sm border border-border bg-card p-2">
+          <div className="grid min-w-0 items-stretch gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+            <section aria-labelledby="coastal-other-points" className="flex min-w-0 flex-col rounded-sm border border-border bg-card p-2">
               <h2 id="coastal-other-points" className="font-display mb-2 text-sm leading-tight">다른 전망 지점</h2>
               {renderPoints(COASTAL_VIEWPOINTS)}
-              <details className="border-t border-border">
-                <summary className="min-h-10 cursor-pointer px-1 py-2.5 text-xs font-medium text-muted-foreground">산·섬 3곳</summary>
-                {renderPoints(INLAND_VIEWPOINTS)}
-              </details>
-              <button type="button" onClick={() => selectAtCurrentTime(REFERENCE_LOCATION)} className="mt-3 inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-sm border border-border px-2 text-xs font-medium hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring">
+              {renderPoints(INLAND_VIEWPOINTS)}
+              <button type="button" onClick={() => selectAtCurrentTime(REFERENCE_LOCATION)} className="mt-auto inline-flex h-10 w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-sm border border-border px-2 text-xs font-medium hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring">
                 <LocateFixed aria-hidden="true" className="size-4 shrink-0" />대표 지점
               </button>
             </section>
             <div className="min-w-0 rounded-sm border border-border bg-card">
-              <div className="relative z-20 flex min-h-20 flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-4">
+              <div className="relative z-20 flex min-h-20 flex-wrap items-center justify-between gap-2 px-3 py-3 sm:h-20 sm:flex-nowrap sm:px-4">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-accent"><MapPin aria-hidden="true" className="size-3.5" />해운대·수영 연안</span>
                 <div className="ml-auto flex items-center gap-2">
                   <label className="inline-flex items-center gap-1.5 text-xs font-medium">
@@ -217,7 +214,7 @@ export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, o
                     <select aria-label="지도 예보 시각" value={forecast.time} onChange={(event) => {
                       const point = series.find(({ time }) => time === event.target.value);
                       if (point) { setReferenceTime(undefined); onForecastSelect(point); }
-                    }} className="font-tabular min-h-10 rounded-sm border border-border bg-card px-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+                    }} className="font-tabular h-10 min-w-24 rounded-sm border border-border bg-card px-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring">
                       {series.map(({ time }) => <option key={time} value={time}>{time}</option>)}
                     </select>
                   </label>
@@ -225,7 +222,7 @@ export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, o
                 </div>
               </div>
               <div className="relative isolate h-[370px] border-y border-border sm:h-[435px] lg:h-[485px]">
-                <CoastalMap fogPolygon={fogVisible ? polygon : null} pins={allPins} selected={selected} onSelect={selectAtCurrentTime} onPick={(lat, lon) => selectAtCurrentTime({
+                <CoastalMap fogPolygons={fogVisible ? polygons : []} pins={allPins} selected={selected} onSelect={selectAtCurrentTime} onPick={(lat, lon) => selectAtCurrentTime({
                   id: "custom", name: "선택한 지도 위치", lat: Number(lat.toFixed(5)), lon: Number(lon.toFixed(5)), elevation: null, kind: "직접 선택한 좌표",
                 })} />
                 <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-wrap items-start justify-between gap-2">
@@ -238,9 +235,9 @@ export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, o
                   </p>
                 </div>
               </div>
-              <div className="flex min-h-16 flex-wrap items-center px-3 py-2.5 text-[11px] leading-4 text-muted-foreground sm:px-4">
+              <div className="flex min-h-16 flex-wrap items-center px-3 py-2.5 lg:h-16 text-[11px] leading-4 text-muted-foreground sm:px-4">
                 <div className="flex flex-wrap gap-x-2.5 gap-y-1">
-                  <span className="inline-flex items-center gap-1 whitespace-nowrap"><span aria-hidden="true" className="h-2.5 w-3.5 rounded-[2px] border border-slate-400 bg-white" />해무 출현 예상 영역</span>
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap"><CloudFog aria-hidden="true" className="h-3.5 w-4 fill-white stroke-slate-400" />해무 출현 예상 영역</span>
                   {([["above", "해무 위"], ["edge", "눈높이"], ["inside", "해무 속"], ["outside", "영역 밖"], ["unknown", "미확인"]] as const).map(([tone, label]) => (
                     <span key={tone} className="inline-flex items-center gap-1 whitespace-nowrap"><span aria-hidden="true" className={`size-1.5 rounded-full ${pinDots[tone]}`} />{label}</span>
                   ))}
