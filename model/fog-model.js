@@ -20,7 +20,7 @@ export function estimateFogTop(hour) {
     if (point.humidity < 90) {
       const ratio = (previous.humidity - 90) / (previous.humidity - point.humidity);
       const height = Math.round(previous.height + ratio * (point.height - previous.height));
-      return { status: 'bounded', height, range: [Math.max(0, Math.floor(previous.height - 50)), Math.ceil(point.height + 50)], reason: '지상에 연결된 습윤층이 상대습도 90% 아래로 내려가는 고도를 보간했습니다.' };
+      return { status: 'bounded', height, range: [Math.max(0, Math.floor(previous.height - 50)), Math.ceil(point.height + 50)], reason: '지상에 연결된 습윤층이 상대습도 70% 아래로 내려가는 고도를 보간했습니다.' };
     }
     previous = point;
   }
