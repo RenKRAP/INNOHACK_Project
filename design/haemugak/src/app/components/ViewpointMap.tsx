@@ -270,7 +270,6 @@ export function ViewpointMap({ selected, forecast: selectedForecast, onSelect, o
             <AltitudeForm key={coordinateKey(selected)} elevation={elevation} fallback={selected.elevation} hasOverride={override !== null} onChange={saveAltitude} />
           </aside>
         </div>
-        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">2030년 7월 가상 시나리오이며 실제 예보·관측이 아니에요. 가상 해무 영역은 날짜마다 지도 안의 무작위 위치에 하나씩 배정되며, 영역 안 지점은 같은 시간대별 데이터를 사용해요. 지도 핀은 건물의 최대 높이 또는 자연 지형의 기록된 해발고도로 해무층과 비교해요. 확인되지 않은 고도는 미확인으로 남겨요. 인근 사진은 과거 기록이에요.</p>
       </div>
     </section>
   );

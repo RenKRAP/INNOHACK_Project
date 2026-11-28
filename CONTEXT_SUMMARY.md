@@ -1,8 +1,8 @@
 ﻿# INNOHACK project context
 
 ## Verified state (2026-11-28)
-- Root: C:/Users/wooji/OneDrive/Desktop/INNOHACK. Origin: https://github.com/RenKRAP/INNOHACK_Project.git. Active branch main; HEAD ce4fd0a4399a00ac562befa610c747234da0ed8a, published to origin/main in the previous task.
-- User authorized committing and publishing the map legend explanation to origin/main. Remote main matched ce4fd0a before publication; no separate deployment operation requested. Preserve Local_server/, ignored .env/.env.local secrets, and untracked seafog_example/.
+- Root: C:/Users/wooji/OneDrive/Desktop/INNOHACK. Origin: https://github.com/RenKRAP/INNOHACK_Project.git. Active branch main; HEAD f9958037b2e41e78128708de82adabb34731a2a6, published to origin/main in the previous task.
+- Current request authorizes committing the two notice removals and rebuilt production asset on main. No push or deployment requested. Preserve Local_server/, ignored .env/.env.local secrets, and untracked seafog_example/.
 - Haemugak source: design/haemugak (React/Vite); production files: public/haemugak. Build with npm.cmd run build --prefix design/haemugak. Stable main.js/style.css, embedded fonts and third-party licenses are generated/preserved by the build. Root serves Haemugak; original app remains available at /index.html.
 
 ## UI state and current local change
@@ -12,6 +12,7 @@
 - Matched map and nearby-photo header, viewport and footer heights at responsive sizes. Legend labels are now compact 11px text: 해무 위 / 눈높이 / 해무 속 / 영역 밖 / 미확인. Detailed status wording remains in location information.
 - Added a bordered white swatch with "해무 출현 예상 영역" (removed the requested white-area prefix) to the compact map legend. Production build and git diff --check passed for this text-only addition; no new browser preview or tests run. Existing bundle-size warning remains.
 - Other-viewpoints sidebar shows single-line names only. Hourly chart is below the map on the left; selected location and altitude controls are on the right. Height comparison appears above altitude saving.
+- Removed the map's long July 2030 scenario explanation and the footer's example probability/elevation/visibility notice, as requested. Synthetic data behavior is unchanged; production assets rebuilt.
 
 ## Synthetic forecast behavior retained
 - July 2030 scenarios are example data, not live or calibrated forecasts: 31 days / 744 hours, 15 fog days (even dates), each with 4–6 consecutive hours scoring >=65.
@@ -21,7 +22,7 @@
 - Photography indicators mark hours >=70%. Pins compare recorded elevation to synthetic fog height with a 25 m margin. Buildings use maximum heights: Ipark 292 m, Exllu 153.23 m, LCT 411.6 m; natural elevations: Hwangnyeong 427 m, Jangsan 634 m, Dongbaek 32 m. Dalmaji remains unknown. Building heights are a user convention, not surveyed rooftop elevations.
 
 ## Verification
-- Current changes: npm.cmd test passed 59/59; production build passed; git diff --check passed. Existing Vite bundle-size warning remains.
+- Current text removal: production build passed; git diff --check passed. Existing Vite bundle-size warning remains. Historical broader UI validation: npm.cmd test passed 59/59.
 - Chrome local preview verified the removed home summary/3D navigation, dropdown/calendar order, aligned map/photo heights, compact legend, and functioning map/chart rendering.
 - Temporary Python preview server on 4178 stopped and its Chrome tab closed. Pre-existing server on 4173 preserved.
 

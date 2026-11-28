@@ -12,7 +12,6 @@ export function HaemugakFooter() {
         </div>
 
         <div className="flex flex-col items-start gap-1 sm:items-end">
-          <span>표시된 시간대별 확률·고도·시계 정보는 예시 데이터입니다.</span>
           <span className="font-tabular text-[11px] text-muted-foreground/80">
             HAEMUGAK · BUSAN SUMMER JOURNAL
           </span>
